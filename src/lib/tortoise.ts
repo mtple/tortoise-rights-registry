@@ -24,9 +24,46 @@ export const zGetAudio = z.object({
 });
 export type TortoiseSong = z.infer<typeof zGetAudio>;
 
-// TODO(Phase 2): loadSongBySlug(slug): fetch `${TORTOISE_API_BASE}/api/getAudio?slug=${slug}` -> zGetAudio.parse
-//   + a paste-fallback variant that takes a raw audio URL/CID. Optionally read a cached dev fixture.
-export async function loadSongBySlug(_slug: string): Promise<TortoiseSong> {
-  void TORTOISE_API_BASE;
-  throw new Error("TODO(Phase 2): implement loadSongBySlug");
+/** Load a real Tortoise song by slug via the public getAudio endpoint. */
+export async function loadSongBySlug(slug: string): Promise<TortoiseSong> {
+  const res = await fetch(`${TORTOISE_API_BASE}/api/getAudio?slug=${encodeURIComponent(slug)}`);
+  if (!res.ok) {
+    throw new Error(`getAudio(${slug}) -> HTTP ${res.status} (live app unreachable? use the paste fallback)`);
+  }
+  return zGetAudio.parse(await res.json());
+}
+
+/**
+ * Paste fallback (D9): build a minimal song from a raw audio URL/CID when the live API is down.
+ * The caller must supply the artist wallet (normally read from getAudio's walletAddress).
+ */
+export function songFromPaste(input: {
+  audioUrl: string;
+  walletAddress: string;
+  title?: string;
+  artist?: string;
+  slug?: string;
+  songId?: string;
+}): TortoiseSong {
+  return zGetAudio.parse({
+    id: input.songId ?? input.audioUrl,
+    url: input.audioUrl,
+    title: input.title ?? "Untitled",
+    artist: input.artist ?? "Unknown",
+    walletAddress: input.walletAddress,
+    urlSlug: input.slug,
+  });
+}
+
+/** Fetch the raw audio bytes (from the public Pinata gateway URL) to hash + mirror to Walrus. */
+export async function fetchAudioBytes(url: string): Promise<{ bytes: Uint8Array; mimeType: string }> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`audio fetch -> HTTP ${res.status}`);
+  const mimeType = res.headers.get("content-type") ?? "application/octet-stream";
+  return { bytes: new Uint8Array(await res.arrayBuffer()), mimeType };
+}
+
+/** Extract the original IPFS CID from a Pinata gateway URL (provenance), if present. */
+export function ipfsCidFromUrl(url: string): string | undefined {
+  return url.match(/\/ipfs\/([a-zA-Z0-9]+)/)?.[1];
 }

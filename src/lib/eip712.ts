@@ -5,7 +5,7 @@
 // Verify signatures with viem `publicClient.verifyTypedData` (EOA + ERC-1271 + ERC-6492),
 // never naive ecrecover — artists may connect a Base Account (smart wallet). (plan §4, R5)
 
-import type { Address, Hex } from "viem";
+import { hashTypedData, type Address, type Hex, type TypedDataDomain } from "viem";
 
 export const CONSENT_PRIMARY_TYPE = "Consent" as const;
 
@@ -34,5 +34,20 @@ export interface ConsentMessage {
   timestamp: bigint;
 }
 
-// TODO(Phase 1): buildConsentTypedData(chainId, registry, msg) -> the object passed to
-// signTypedData / verifyTypedData. Golden-value test against the contract's EIP-712 digest.
+/**
+ * The full EIP-712 payload to hand to `signTypedData` (wallet) or `verifyTypedData` (server).
+ * The shape matches the contract's CONSENT_TYPEHASH exactly — a golden-value test pins the digest.
+ */
+export function buildConsentTypedData(chainId: number, registry: Address, message: ConsentMessage) {
+  return {
+    domain: consentDomain(chainId, registry) satisfies TypedDataDomain,
+    types: consentTypes,
+    primaryType: CONSENT_PRIMARY_TYPE,
+    message,
+  } as const;
+}
+
+/** keccak256 EIP-712 digest for a Consent message — matches the contract's `consentDigest`. */
+export function consentDigest(chainId: number, registry: Address, message: ConsentMessage): Hex {
+  return hashTypedData(buildConsentTypedData(chainId, registry, message));
+}
