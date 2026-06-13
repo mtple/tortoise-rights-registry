@@ -33,12 +33,27 @@ On **durin.dev**, connect the admin wallet, deploy an L2Registry for `tortmusic.
 
 ---
 
-## Step 2 — Wire `tortmusic.eth` on L1 (two txs, owner wallet, Ethereum mainnet)
+## Step 2 — Wire `tortmusic.eth` on L1 (TWO separate txs, owner wallet, Ethereum mainnet)
 
-1. `setResolver(tortmusic.eth → 0x8A968aB9eb8C084FBC44c531058Fc9ef945c3D61)` (Durin L1 resolver)
-2. `setL2Registry(<L2_REGISTRY_ADDRESS>, 8453)`
+Easiest path: the **durin.dev UI → "2. Configure L1 Resolver"** has **two distinct buttons** — do
+BOTH (a "Resolver up to date ✓" on the first does NOT cover the second):
+1. **"Change Resolver"** → sets the resolver to the Durin L1 resolver `0x8A968aB9eb8C084FBC44c531058Fc9ef945c3D61`.
+2. **"Set Registry"** (under "Set L2 Registry") → links your L2 registry to the L1 resolver. ← easy to miss.
 
-Low-gas window; wait for confirmations. (Did the Step 0 records audit first?)
+Equivalent raw calls (note the EXACT signatures — verified against the deployed Durin resolver):
+1. `setResolver(node, 0x8A968aB9eb8C084FBC44c531058Fc9ef945c3D61)` — on the ENS registry/Name Wrapper
+   (the ENS app or Durin UI routes this for you; `tortmusic.eth` is a wrapped name → goes via the Name Wrapper).
+2. `setL2Registry(bytes32 node, uint64 targetChainId, address targetRegistryAddress)` — on the Durin
+   resolver itself, e.g.:
+   ```
+   cast send 0x8A968aB9eb8C084FBC44c531058Fc9ef945c3D61 \
+     "setL2Registry(bytes32,uint64,address)" \
+     <namehash(tortmusic.eth)> 8453 <L2_REGISTRY_ADDRESS> \
+     --rpc-url "$L1_RPC_URL" --account tortoise-admin
+   ```
+
+Verify it landed: `cast call 0x8A968…3D61 "l2Registry(bytes32)(uint64,address)" <node> --rpc-url "$L1_RPC_URL"`
+should return `8453` + your L2 registry. Low-gas window; wait for confirmations. (Did the Step 0 records audit first?)
 
 ---
 
