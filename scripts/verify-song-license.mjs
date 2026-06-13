@@ -144,9 +144,9 @@ async function main() {
   if (!songId) {
     try {
       const fromEns = await resolveText(ensName, TEXT_KEYS.manifestHash);
-      // We store songId implicitly via the on-chain record; the ENS manifest.hash text lets us
-      // cross-check, but to read songs[] we need the songId. The mint sets `url`/manifest pointers;
-      // for MVP the songId equals the slug's resolved record — fall back to slug if unset.
+      // The on-chain songId IS the slug (the opt-in route keys by urlSlug), and the ENS name is
+      // <slug>.tortmusic.eth — so resolving the name proves it's minted, and songKey(slug) reads the
+      // right record. (--song-id overrides for the paste-flow edge case where a song had no slug.)
       check(`resolve ${ensName} (manifest.hash present)`, !!fromEns, fromEns || "empty — is the name minted?");
       songId = songIdArg || slug; // songId defaults to slug unless overridden
     } catch (e) {

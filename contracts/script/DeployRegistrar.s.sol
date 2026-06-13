@@ -8,7 +8,7 @@ import {IL2Registry} from "../src/IL2Registry.sol";
 /// @notice Deploys the onlyOwner TortoiseRegistrar against an already-deployed Durin L2Registry.
 /// @dev After this, the registry owner must call `L2Registry.addRegistrar(<this registrar>)`
 ///      (separate tx, owner-only on the registry) before the registrar can mint. (plan §7.0 item 8)
-///        forge script script/DeployRegistrar.s.sol --rpc-url base --broadcast --verify
+///        forge script script/DeployRegistrar.s.sol --rpc-url base --broadcast --verify --account tortoise-admin --sender <ADMIN_ADDR>
 contract DeployRegistrar is Script {
     function run() external returns (TortoiseRegistrar registrar) {
         address l2Registry = vm.envAddress("L2_REGISTRY_ADDRESS");

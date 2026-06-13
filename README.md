@@ -83,14 +83,19 @@ resolver txs, funding). Walrus uses testnet (free) — see the note below.
 ```bash
 # A. Deploy the registry to Base (constructor: USDC + treasury). Anvil-fork dry-run first.
 cd contracts
-forge script script/Deploy.s.sol --rpc-url base --broadcast --verify
-#  → record the address into .env as RIGHTS_REGISTRY_ADDRESS (and Vercel env).
+ln -sf ../.env .env                              # forge reads env from contracts/, not the repo root (gitignored)
+cast wallet import tortoise-admin --interactive  # one-time: encrypt the admin key (keeps it out of shell history)
+forge script script/Deploy.s.sol --rpc-url base --broadcast --verify \
+  --account tortoise-admin --sender <ADMIN_ADDR>   # --broadcast alone will NOT sign — pass a signer
+#  → record the address into .env as RIGHTS_REGISTRY_ADDRESS *and* NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS
+#    (same value — the browser only reads NEXT_PUBLIC_*), and into Vercel env.
 #  ⚠️ Deploy BEFORE collecting any opt-in signature — the EIP-712 domain binds this
 #     address; a redeploy invalidates every signature already collected.
 
 # B. Deploy the onlyOwner registrar, then authorize it on the L2Registry.
-forge script script/DeployRegistrar.s.sol --rpc-url base --broadcast --verify
-#  → then call L2Registry.addRegistrar(<registrar>) from the registry owner. cd ..
+forge script script/DeployRegistrar.s.sol --rpc-url base --broadcast --verify \
+  --account tortoise-admin --sender <ADMIN_ADDR>
+#  → then: cast send <L2Registry> "addRegistrar(address)" <registrar> --rpc-url base --account tortoise-admin ; cd ..
 
 # C. Opt a song in — from the live app (or pnpm dev): open /song/<slug>, connect the
 #    artist wallet, sign the consent, and send registerSong (the artist pays gas).
@@ -132,6 +137,13 @@ USDC, and ENS all run on **mainnet**. A `blobId` is a deterministic content hash
 integrity is provable regardless of which Walrus network holds the bytes. Endpoints are
 env-driven (`WALRUS_PUBLISHER` / `WALRUS_AGGREGATOR`), so swapping to a self-run mainnet
 publisher later is a config change. See `PREREQUISITES.md`.
+
+**Durability is finite.** Testnet blobs are deleted once `WALRUS_EPOCHS` elapse (and testnet is
+periodically reset), so the bytes — and therefore `verify-song-license.mjs`'s audio + manifest
+checks — stay available only for a window (~weeks at `WALRUS_EPOCHS=53`). The on-chain consent,
+licenses, and committed hashes are permanent; because a `blobId` is a content hash, re-pinning the
+*same* bytes to any Walrus network restores full verification unchanged. For a durable deployment,
+run an authed mainnet publisher (`WALRUS_PUBLISHER` + `WALRUS_PUBLISHER_AUTH`).
 
 ## Honest framing
 
