@@ -8,7 +8,7 @@
   "additionalProperties": true,
   "properties": {
     "schema": { "const": "tortoise-rights/song/1.0" },
-    "songId": { "type": "string", "description": "music_metadata.id (UUID)" },
+    "songId": { "type": "string", "description": "the song's id (UUID)" },
     "slug": { "type": "string" },
     "title": { "type": "string" },
     "artist": {
