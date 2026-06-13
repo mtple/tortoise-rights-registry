@@ -58,3 +58,6 @@ tmp/
 
 # --- Solidity audit bundle (transient) ---
 .audit-*/
+
+# --- Private plan (Part B — internal, never published) ---
+plans/initial-plan-PRIVATE.md

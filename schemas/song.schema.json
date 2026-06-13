@@ -8,8 +8,8 @@
   "additionalProperties": true,
   "properties": {
     "schema": { "const": "tortoise-rights/song/1.0" },
-    "songId": { "type": "string", "description": "music_metadata.id (UUID)" },
-    "slug": { "type": "string" },
+    "songId": { "type": "string", "description": "the on-chain song key — the slug (falls back to the Tortoise id for paste-only songs)" },
+    "slug": { "type": "string", "description": "human-readable slug; equals songId for Tortoise songs" },
     "title": { "type": "string" },
     "artist": {
       "type": "object",
