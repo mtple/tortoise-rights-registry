@@ -1,0 +1,9 @@
+# Foundry build artifacts
+out/
+cache/
+broadcast/**/dry-run/
+broadcast/**/run-[0-9]*.json
+.gas-snapshot
+
+# Dependencies — restored via ./install-deps.sh (pinned), not committed.
+lib/
