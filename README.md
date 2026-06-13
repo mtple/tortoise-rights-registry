@@ -12,8 +12,7 @@ It reads real Tortoise songs over a public, read-only HTTP seam and requires **z
 changes** to the Tortoise app. It is **consent infrastructure for a prototype** —
 not legal advice, and not a promise of artist revenue.
 
-> **Status: scaffolding.** Prerequisite gates are verified (see `PREREQUISITES.md`);
-> the contract, app, and verification script are being implemented phase by phase.
+**Live app:** https://tortoise-rights-registry.vercel.app
 
 ---
 
@@ -51,27 +50,79 @@ not legal advice, and not a promise of artist revenue.
 No database. Canonical state lives on-chain + Walrus + ENS, which is what makes every
 claim independently verifiable.
 
-## Quick start
+## Setup
 
 ```bash
 # 1. JS / app deps
 pnpm install
 
-# 2. Foundry deps (pinned; lib/ is gitignored)
+# 2. Foundry deps (pinned; contracts/lib is gitignored)
 cd contracts && ./install-deps.sh && forge build && cd ..
 
-# 3. Config
-cp .env.example .env   # fill in addresses as you deploy; web app needs NO private key
+# 3. Config — fill in addresses as you deploy. The web app needs NO private key;
+#    only the local CLI/deploy scripts read ADMIN_PRIVATE_KEY (from .env or a keystore).
+cp .env.example .env
 
 # 4. Smoke-test the Walrus blob store (no wallet needed)
 pnpm smoke:walrus
 
 # 5. Contract tests (USDC paths run against a Base mainnet fork)
-cd contracts && forge test && cd ..
+cd contracts && BASE_RPC_URL=https://mainnet.base.org forge test --fork-url base && cd ..
 
-# 6. Dev server
+# 6. App unit tests + dev server
+pnpm test
 pnpm dev
 ```
+
+## Full walkthrough (deploy → opt-in → name → license → verify)
+
+Requires a funded admin wallet on Base, and an artist + buyer wallet. See
+`PREREQUISITES.md` for the one-time on-chain setup (Durin L2Registry, the two L1
+resolver txs, funding). Walrus uses testnet (free) — see the note below.
+
+```bash
+# A. Deploy the registry to Base (constructor: USDC + treasury). Anvil-fork dry-run first.
+cd contracts
+forge script script/Deploy.s.sol --rpc-url base --broadcast --verify
+#  → record the address into .env as RIGHTS_REGISTRY_ADDRESS (and Vercel env).
+#  ⚠️ Deploy BEFORE collecting any opt-in signature — the EIP-712 domain binds this
+#     address; a redeploy invalidates every signature already collected.
+
+# B. Deploy the onlyOwner registrar, then authorize it on the L2Registry.
+forge script script/DeployRegistrar.s.sol --rpc-url base --broadcast --verify
+#  → then call L2Registry.addRegistrar(<registrar>) from the registry owner. cd ..
+
+# C. Opt a song in — from the live app (or pnpm dev): open /song/<slug>, connect the
+#    artist wallet, sign the consent, and send registerSong (the artist pays gas).
+#    Audio + manifest are mirrored to Walrus; the consent hash lands on Base.
+
+# D. Name it (admin CLI, local — never the hosted app):
+pnpm mint:name <slug>        # mints <slug>.tortmusic.eth with pointer text records
+
+# E. License it — a buyer opens /song/<slug>, approves USDC, and buys (two steps).
+
+# F. Verify everything, trusting nothing:
+pnpm verify <slug>                       # song artifact + consent + availability
+pnpm verify <slug> --buyer <address>     # also that buyer's on-chain license
+pnpm verify <slug> --rpc-fallback        # read ENS direct from the L2Registry
+```
+
+`verify-song-license.mjs` resolves the song's ENS name, fetches the manifest + audio
+from Walrus and checks their hashes against the contract, re-derives and verifies the
+artist's EIP-712 consent (ERC-1271-aware), confirms `licenseTermsHash ==
+keccak256(LICENSE_TERMS.md)` and that the manifest price matches on-chain, and reports
+`licenseActive`. It prints a per-check result and exits non-zero on any mismatch.
+
+## Deployed addresses (Base mainnet, chainId 8453)
+
+| What | Address |
+| ---- | ------- |
+| USDC (Circle) | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
+| Durin L2RegistryFactory | `0xDddddDdDDD8Aa1f237b4fa0669cb46892346d22d` |
+| Durin L1 Resolver (Ethereum mainnet) | `0x8A968aB9eb8C084FBC44c531058Fc9ef945c3D61` |
+| `TortoiseRightsRegistry` | _set after deploy_ |
+| `TortoiseRegistrar` | _set after deploy_ |
+| `tortmusic.eth` L2Registry | _set after durin.dev deploy_ |
 
 ## A note on Walrus (testnet blobs)
 
