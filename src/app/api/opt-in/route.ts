@@ -105,7 +105,7 @@ export async function POST(req: Request) {
       typedData,
       artist,
       audio: { keccak256: audioHash, mimeType: audio.mimeType, bytes: audio.bytes.length, sourceIpfsCid: ipfsCidFromUrl(song.url) },
-      song: { id: canonicalSongId, slug: song.urlSlug ?? body.slug ?? null, title: song.title, artistName: song.artist, fid: song.artistFid ?? null },
+      song: { songId: canonicalSongId, id: canonicalSongId, slug: song.urlSlug ?? body.slug ?? null, title: song.title, artistName: song.artist, fid: song.artistFid ?? null },
       licenseTermsHash: termsHash,
       timestamp,
     });

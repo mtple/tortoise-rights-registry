@@ -218,8 +218,10 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
         </Card>
       )}
 
-      {/* Buyer-facing license purchase — self-hides until the song is registered on-chain. */}
-      {song?.song?.id && <LicensePurchase songId={song.song.id} />}
+      {/* Buyer-facing license purchase — self-hides until the song is registered on-chain.
+          songId is the canonical on-chain key (the slug for Tortoise songs) — same value the
+          opt-in route registered under, so songKey() matches. */}
+      {song?.song?.songId && <LicensePurchase songId={song.song.songId} />}
 
       <p className="text-xs text-ink/60">
         Consent infrastructure for a prototype — not legal advice. The signature proves the named wallet
