@@ -18,6 +18,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "abi": "node scripts/extract-abi.mjs",
     "smoke:walrus": "node scripts/smoke-walrus.mjs",
     "smoke:ens": "node scripts/smoke-ens.mjs",
     "verify": "node scripts/verify-song-license.mjs",
