@@ -1,52 +1,106 @@
 # Tortoise AI Training License v0.1
 
-> **⚠️ DRAFT — load-bearing file.** The keccak256 hash of the exact bytes of this
-> file is the `licenseTermsHash` that artists sign (EIP-712 `Consent`) and that is
-> stored on-chain in `TortoiseRightsRegistry`. **Changing one byte changes the hash
-> and invalidates every signature and on-chain record that referenced the old text.**
-> Finalize this wording *before* the first opt-in signature is collected. Do not edit
-> after go-live without a deliberate re-registration plan.
+**Status:** Hackathon prototype license. This document is intended for demonstration and product design purposes only. It is not legal advice and should be reviewed by qualified counsel before production use.
 
-## What this license is
+## 1. Parties
 
-This document defines the terms an artist consents to when they opt a single song
-into AI-training licensing through the Tortoise Rights Registry, and the terms a
-licensee accepts when they purchase a license for that song with USDC on Base.
+This license is between:
 
-This is **consent infrastructure for a prototype** — a provable, on-chain record
-that a named wallet opted a specific audio recording (identified by its content
-hash) into AI-training use under these terms. **It is not legal advice and is not a
-warranty of rights, ownership, or revenue.**
+* **Artist / Rights Holder:** the wallet address that registered the song in the Tortoise Rights Registry; and
+* **Licensee:** the wallet address that purchases a license for the song through the Tortoise Rights Registry contract.
 
-## 1. Definitions
+## 2. Licensed Work
 
-- **Work** — the specific audio recording identified by the `audioHash` (keccak256
-  of the exact audio bytes stored on Walrus) in the song manifest.
-- **Artist** — the wallet address that signed the EIP-712 `Consent` message and sent
-  the `registerSong` transaction for the Work.
-- **Licensee** — a wallet that completed `purchaseSongLicense` for the Work.
-- **AI Training** — using the Work as input data to train, fine-tune, evaluate, or
-  otherwise develop machine-learning models.
+The licensed work is the specific song identified by the Tortoise song manifest referenced in the license purchase transaction.
 
-## 2. Grant (TODO: finalize legal wording before go-live)
+The song manifest should identify, at minimum:
 
-Subject to payment of the song's USDC price, the Artist grants the Licensee a
-non-exclusive, worldwide, non-transferable license to use the Work for AI Training.
+* the song title;
+* the artist or rights holder;
+* the audio hash;
+* the Walrus audio blob ID;
+* the Walrus manifest blob ID;
+* the applicable license terms hash; and
+* the artist's signed AI-training consent.
 
-## 3. Reservations
+A license applies only to the exact song manifest hash referenced at the time of purchase.
 
-- The Artist represents they have the right to grant this license for the Work.
-  (The Registry records consent; it does **not** independently verify ownership —
-  the wallet↔song binding is attested by Tortoise, not cryptographically proven.)
-- Revocation (`revokeConsent`) stops **new** licenses from being sold. Licenses
-  already purchased remain valid as snapshots of the Work at purchase time.
+## 3. License Grant
 
-## 4. No warranty
+Once the license purchase transaction is confirmed, the Artist grants the Licensee a non-exclusive, non-transferable, non-sublicensable license to use the Licensed Work for AI training and machine-learning development purposes, subject to the restrictions below.
 
-THE WORK AND THIS LICENSE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
-THIS IS A PROTOTYPE AND NOT LEGAL ADVICE.
+Permitted uses include:
 
----
+* training, fine-tuning, evaluating, or testing AI and machine-learning models;
+* creating embeddings, tags, classifications, recommendations, search indexes, or similarity systems;
+* internal research and development related to audio or music models; and
+* storing reasonable internal copies of the Licensed Work as needed for the permitted uses.
 
-*Permission mode: `AI_TRAINING_ALLOWED` (enum 0). Version string: "Tortoise AI
-Training License v0.1" — must match the `license.name` field in the song manifest.*
+## 4. Restrictions
+
+The Licensee may not use the Licensed Work to:
+
+* clone, imitate, or synthesize the Artist's voice without separate written permission;
+* market or offer a product that explicitly generates music "in the style of" the Artist without separate written permission;
+* use the Artist's name, image, likeness, voice, or persona for endorsement or promotion without separate written permission;
+* redistribute, resell, sublicense, publish, or make available the raw audio file as a standalone dataset or media file;
+* use the Licensed Work in a way that falsely suggests the Artist approved, endorsed, or participated in the Licensee's product; or
+* use the Licensed Work for unlawful, defamatory, deceptive, or harmful purposes.
+
+## 5. Attribution and Metadata Preservation
+
+The Licensee must preserve reasonable attribution metadata associated with the Licensed Work in internal dataset records and model documentation where technically practical.
+
+Attribution metadata should include:
+
+* song title;
+* artist name or ENS name, if available;
+* artist wallet address;
+* Tortoise song ID or canonical URL;
+* song manifest hash; and
+* license purchase transaction hash.
+
+This license does not require public attribution in every model output unless separately stated in the song manifest or a separate agreement.
+
+## 6. Payment and License Receipt
+
+The license becomes effective only after:
+
+1. the Licensee pays the required license price through the Tortoise Rights Registry contract; and
+2. the contract records the license purchase for the Licensee's wallet address.
+
+The onchain license purchase record is the source of truth. Any license receipt manifest generated by Tortoise is a convenience artifact that should match the onchain purchase record.
+
+## 7. Revocation
+
+The Artist may deactivate future license purchases for the song by updating the song's license status in the Tortoise Rights Registry.
+
+Revocation is forward-looking only. Licenses purchased before revocation remain valid for the manifest version and license terms that were active at the time of purchase.
+
+## 8. Artist Representation
+
+By registering the song, the Artist represents that they own or control the rights necessary to grant this license for the Licensed Work.
+
+If the song contains samples, covers, co-writers, producers, session performers, label-controlled recordings, or other third-party rights, the Artist is responsible for having the necessary permissions before opting the song into licensing.
+
+## 9. No Ownership Transfer
+
+This license does not transfer copyright or ownership of the Licensed Work. The Artist retains all rights not expressly granted in this license.
+
+## 10. No Warranty
+
+The Licensed Work is provided "as is." To the maximum extent permitted by law, the Artist and Tortoise disclaim warranties of merchantability, fitness for a particular purpose, non-infringement, and uninterrupted availability.
+
+## 11. Limitation of Liability
+
+To the maximum extent permitted by law, neither the Artist nor Tortoise will be liable for indirect, incidental, consequential, special, exemplary, or punitive damages arising from use of the Licensed Work.
+
+## 12. Tortoise Role
+
+Tortoise provides software for manifest creation, decentralized storage references, license purchase records, and verification tooling. Tortoise is not a music publisher, record label, collective management organization, or legal representative of the Artist or Licensee.
+
+## 13. Version
+
+License name: **Tortoise AI Training License v0.1**
+
+Future versions may change these terms. A license purchase is governed by the license terms hash referenced by the song manifest and purchase transaction at the time of purchase.

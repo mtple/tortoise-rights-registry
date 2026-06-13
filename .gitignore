@@ -47,3 +47,11 @@ coverage/
 scratch/
 tmp/
 *.local
+
+# --- Audio binaries (canonical copy lives on Walrus/IPFS, not git) ---
+*.mp3
+*.wav
+*.flac
+*.m4a
+*.aac
+*.ogg
