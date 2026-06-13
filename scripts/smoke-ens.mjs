@@ -64,14 +64,19 @@ async function main() {
   await baseClient.waitForTransactionReceipt({ hash });
   console.log(`  ✓ minted (tx ${hash})`);
 
-  // (b) direct L2Registry read on Base
+  // (b) direct L2Registry read on Base. Poll briefly — the read RPC can lag a block or two
+  // behind the just-confirmed write, so an immediate read may return "" before state syncs.
   let direct = "";
-  try {
-    direct = await baseClient.readContract({ address: getAddress(L2_REGISTRY), abi: resolverAbi, functionName: "text", args: [node, KEY] });
-    console.log(`  ${direct === VALUE ? "✓" : "✗"} direct L2Registry read: "${direct}"`);
-  } catch (e) {
-    console.log(`  ✗ direct L2Registry read failed: ${e.shortMessage || e.message}`);
+  for (let i = 0; i < 6; i++) {
+    try {
+      direct = await baseClient.readContract({ address: getAddress(L2_REGISTRY), abi: resolverAbi, functionName: "text", args: [node, KEY] });
+      if (direct === VALUE) break;
+    } catch (e) {
+      if (i === 5) console.log(`  (read error: ${e.shortMessage || e.message})`);
+    }
+    await new Promise((r) => setTimeout(r, 2000));
   }
+  console.log(`  ${direct === VALUE ? "✓" : "✗"} direct L2Registry read: "${direct}"`);
 
   // (a) CCIP-Read via mainnet Universal Resolver
   let ccip = "";
