@@ -34,6 +34,21 @@ const songInput = {
   },
 };
 
+describe("hashBytes", () => {
+  // Known-answer tests — assert against independent keccak256 constants, NOT against hashBytes
+  // itself, so a mutation that makes hashBytes return a constant is caught (mutation-tested).
+  it("matches the canonical empty-input keccak256", () => {
+    expect(hashBytes(new Uint8Array(0))).toBe(
+      "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+    );
+  });
+  it('matches keccak256("abc")', () => {
+    expect(hashBytes(new TextEncoder().encode("abc"))).toBe(
+      "0x4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45",
+    );
+  });
+});
+
 describe("buildSongManifest", () => {
   it("produces bytes whose keccak256 equals the returned hash (the on-chain manifestHash)", () => {
     const { bytes, hash } = buildSongManifest(songInput);
