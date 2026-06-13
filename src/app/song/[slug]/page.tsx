@@ -6,6 +6,7 @@ import { base } from "wagmi/chains";
 import { parseUnits, type Hex } from "viem";
 import { Button, Card, StatusBadge } from "@/components/ui";
 import { tortoiseRightsRegistryAbi, RIGHTS_REGISTRY_ADDRESS } from "@/lib/registry";
+import { LicensePurchase } from "@/components/LicensePurchase";
 
 type Step = "idle" | "signing" | "storing" | "registering" | "done" | "error";
 
@@ -216,6 +217,9 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
           </ul>
         </Card>
       )}
+
+      {/* Buyer-facing license purchase — self-hides until the song is registered on-chain. */}
+      {song?.song?.id && <LicensePurchase songId={song.song.id} />}
 
       <p className="text-xs text-ink/60">
         Consent infrastructure for a prototype — not legal advice. The signature proves the named wallet
