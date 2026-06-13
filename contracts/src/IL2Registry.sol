@@ -18,7 +18,4 @@ interface IL2Registry {
     function baseNode() external view returns (bytes32);
 
     function makeNode(bytes32 node, string calldata label) external view returns (bytes32);
-
-    /// @notice True if the label is available (Durin requires 3+ char labels).
-    function available(string calldata label) external view returns (bool);
 }

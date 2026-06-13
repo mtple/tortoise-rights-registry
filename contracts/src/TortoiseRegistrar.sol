@@ -19,13 +19,13 @@ contract TortoiseRegistrar is Ownable {
 
     event SongNameRegistered(string label, address indexed owner, bytes32 indexed node);
 
-    error LabelUnavailable(string label);
-
     constructor(IL2Registry registry_, address owner_) Ownable(owner_) {
         registry = registry_;
     }
 
     /// @notice Mint `label`.tortmusic.eth to `owner` with `records` (pre-encoded resolver setters).
+    /// @dev Durin's L2Registry has no `available()` view; `createSubnode` itself reverts on a
+    ///      duplicate label (the subname is an ERC-721 that can't be minted twice), so no pre-check.
     /// @param label   the subname label (song slug). Durin requires 3+ chars.
     /// @param owner   the subname owner (typically the artist, or the admin for a demo).
     /// @param records ABI-encoded calls to the registry's resolver (setText/setAddr) for the new node.
@@ -35,7 +35,6 @@ contract TortoiseRegistrar is Ownable {
         onlyOwner
         returns (bytes32 node)
     {
-        if (!registry.available(label)) revert LabelUnavailable(label);
         node = registry.createSubnode(registry.baseNode(), label, owner, records);
         emit SongNameRegistered(label, owner, node);
     }

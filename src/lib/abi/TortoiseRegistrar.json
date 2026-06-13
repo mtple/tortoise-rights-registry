@@ -155,17 +155,6 @@
   },
   {
     "type": "error",
-    "name": "LabelUnavailable",
-    "inputs": [
-      {
-        "name": "label",
-        "type": "string",
-        "internalType": "string"
-      }
-    ]
-  },
-  {
-    "type": "error",
     "name": "OwnableInvalidOwner",
     "inputs": [
       {

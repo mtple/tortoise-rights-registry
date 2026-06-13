@@ -23,21 +23,25 @@ contract MockL2Registry is IL2Registry {
         return keccak256(abi.encodePacked(node, keccak256(bytes(label))));
     }
 
-    function available(string calldata label) external view returns (bool) {
-        return bytes(label).length >= 3 && !taken[label];
-    }
+    error AlreadyMinted();
 
     function createSubnode(bytes32 node, string calldata label, address owner, bytes[] calldata data)
         external
         returns (bytes32 sub)
     {
+        // Durin's subname is an ERC-721 — a duplicate label can't be minted twice.
+        if (taken[label]) revert AlreadyMinted();
         sub = makeNode(node, label);
         owners[sub] = owner;
         taken[label] = true;
         lastDataLen = data.length;
         // Execute the encoded resolver setters against this contract (mimics the registry/resolver).
+        // Replicate Durin/ENS Multicallable: every record's embedded node (calldata[4:36]) MUST equal
+        // the subnode, else revert. This catches records encoded for the wrong node.
         for (uint256 i; i < data.length; i++) {
-            (bool ok,) = address(this).call(data[i]);
+            bytes calldata d = data[i];
+            require(d.length >= 36 && bytes32(d[4:36]) == sub, "NODE_MISMATCH");
+            (bool ok,) = address(this).call(d);
             require(ok, "RECORD_CALL_FAILED");
         }
     }
