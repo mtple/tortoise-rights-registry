@@ -8,7 +8,7 @@ Tracks the external gates before/around the build. ✅ done · 🔜 ready, needs
 | 2 | Funding (real $) | ⏸ | Do at deploy time. ~$8–12 ETH on Base (admin) + ~$15–40 ETH on L1 (resolver txs) + artist ~$1–3 ETH + buyer ~8 USDC. **Do NOT pre-buy SUI/WAL** — Walrus is on testnet (free). |
 | 3 | Public repo + `.gitignore` (.env) | ✅ | Remote `mtple/tortoise-rights-registry` exists; `.gitignore` ignores `.env` from commit 1. |
 | 4 | durin.dev → deploy L2Registry on Base | ⏸ | Live session. Record address → `L2_REGISTRY_ADDRESS` + CCIP gateway → `DURIN_CCIP_GATEWAY`. Factory verified on Base. |
-| 5 | **Walrus smoke-test (GATE)** | ✅ | **PASSED on TESTNET.** `scripts/smoke-walrus.mjs`. Mainnet has no free publisher (R1 realized) → using testnet for blobs (labeled). Round-trip byte-equal confirmed. |
+| 5 | **Walrus smoke-test (GATE)** | ✅ | **PASSED on TESTNET.** `scripts/smoke-walrus.mjs`. Mainnet has no free publisher (R1 realized) → using testnet for blobs (labeled). Round-trip byte-equal confirmed. **Re-run after setting `WALRUS_EPOCHS=53`** to confirm the publisher accepts the requested duration (lower it if a PUT 400s). |
 | 6 | Audit tortmusic.eth records (R4) | ⚠️ | Owner `0xD441…6401`; **resolver currently set to ENS Public Resolver `0x231b…8E63`**. Switching to Durin L1 resolver replaces existing resolution — enumerate addr+text records BEFORE `setResolver`, re-set on L2 after. |
 | 7 | L1 txs: setResolver → setL2Registry | ⏸ | Live session, from tortmusic.eth owner wallet. Low-gas window. |
 | 8 | Deploy registrar + `addRegistrar` | ⏸ | Live session (forge broadcast). |
@@ -27,3 +27,4 @@ Tracks the external gates before/around the build. ✅ done · 🔜 ready, needs
 - Publisher `https://publisher.walrus-testnet.walrus.space`, aggregator `https://aggregator.walrus-testnet.walrus.space` — **round-trip verified**.
 - Mainnet aggregators that returned 200 (reads, if ever needed): `https://aggregator.walrus-mainnet.walrus.space`, `https://sui-walrus-mainnet-aggregator.bwarelabs.com`.
 - Mainnet **publishers**: no free first-party one exists; Staketab's was 502. `walrus.ts` stays env-driven for a later swap.
+- **Durability window:** testnet blobs are deleted after `WALRUS_EPOCHS` epochs (and testnet is periodically wiped). `.env` requests `WALRUS_EPOCHS=53` (large; the publisher caps it). On-chain consent/licenses/hashes are permanent; re-pinning the same bytes (same `blobId`) restores `verify-song-license.mjs`'s blob checks at any time. For a durable deploy, run an authed mainnet publisher (`WALRUS_PUBLISHER` + `WALRUS_PUBLISHER_AUTH`).

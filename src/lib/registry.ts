@@ -13,8 +13,15 @@ type Client = ReturnType<typeof basePublicClient>;
 export const tortoiseRightsRegistryAbi = rightsRegistryAbi;
 export const tortoiseRegistrarAbi = registrarAbi;
 
-export const RIGHTS_REGISTRY_ADDRESS = (process.env.RIGHTS_REGISTRY_ADDRESS ?? "") as Address;
-export const USDC_ADDRESS = (process.env.USDC_ADDRESS ??
+// Browser (client components) can ONLY read NEXT_PUBLIC_* env. This module is imported by both the
+// keyless API routes (server) and the song/purchase pages (client), so we prefer the NEXT_PUBLIC_
+// twin and fall back to the bare name for server/scripts. Vercel must set NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS
+// or the live app will call viem with an empty address. (review fix: client env exposure)
+export const RIGHTS_REGISTRY_ADDRESS = (process.env.NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS ??
+  process.env.RIGHTS_REGISTRY_ADDRESS ??
+  "") as Address;
+export const USDC_ADDRESS = (process.env.NEXT_PUBLIC_USDC_ADDRESS ??
+  process.env.USDC_ADDRESS ??
   "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913") as Address; // Base mainnet, decimals()=6 (verified)
 
 /// songKey = keccak256(bytes(songId)) — must match the contract's keccak256(bytes(songId)).

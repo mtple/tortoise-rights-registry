@@ -20,6 +20,7 @@ Vercel env. Nothing left to write — this is execution, in dependency order.
 | Buyer | USDC license purchase | ~8 USDC + ~$2 ETH on Base |
 
 - **Do NOT buy SUI/WAL** — Walrus runs on testnet (free).
+- **Walrus blobs are testnet + EPHEMERAL.** `.env` ships `WALRUS_EPOCHS=53` (large, but the public publisher caps it); run `pnpm smoke:walrus` to confirm it's accepted, lowering if a PUT 400s. Verification stays green only while the blobs live (~weeks) — see README "A note on Walrus".
 - ⚠️ **R4 landmine:** `tortmusic.eth` already has a resolver set (`0x231b0Ee14048e9dCcD1d247744d114a4EB5E8E63`). Step 2 replaces it, which stops whatever records resolve today. **Before Step 2, audit existing records in the ENS manager** and note any to re-create on the L2 afterward.
 
 ---
@@ -48,26 +49,30 @@ binds this contract's address; a redeploy invalidates every signature already co
 
 ```bash
 cd contracts
-# 3a. Dry-run on a local Base fork first (separate terminal: anvil --fork-url $BASE_RPC_URL)
-forge script script/Deploy.s.sol --rpc-url http://localhost:8545
+ln -sf ../.env .env                # forge reads env from contracts/, not the repo root (gitignored symlink)
+cast wallet import tortoise-admin --interactive   # one-time: encrypt the admin key (keeps it out of shell history)
+# 3a. Dry-run on a local Base fork first (separate terminal: anvil --fork-url "$BASE_RPC_URL")
+forge script script/Deploy.s.sol --rpc-url http://localhost:8545 --sender <ADMIN_ADDR>
 # 3b. Real broadcast + Basescan verify
-forge script script/Deploy.s.sol --rpc-url base --broadcast --verify
+forge script script/Deploy.s.sol --rpc-url base --broadcast --verify --account tortoise-admin --sender <ADMIN_ADDR>
 ```
-`.env` needs `USDC_ADDRESS` (default is correct), `TREASURY_ADDRESS` (**triple-check — immutable, C9**), `ADMIN_PRIVATE_KEY`, `ETHERSCAN_API_KEY`.
-Record: deployed address → `RIGHTS_REGISTRY_ADDRESS`; deploy block → `REGISTRY_DEPLOY_BLOCK`.
+`.env` needs `USDC_ADDRESS` (default is correct), `TREASURY_ADDRESS` (**triple-check — immutable, C9**), `ETHERSCAN_API_KEY` (and `ADMIN_PRIVATE_KEY` only if you skip the keystore).
+> ⚠️ `--broadcast` alone will NOT sign — forge needs the explicit `--account` (or `--private-key $ADMIN_PRIVATE_KEY`). If `--rpc-url base` errors with an empty URL, your forge isn't auto-loading `.env`: run `set -a; source ../.env; set +a` first (quote any RPC URL containing `&`).
+Record: deployed address → **both** `RIGHTS_REGISTRY_ADDRESS` and `NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS` (same value); deploy block → `REGISTRY_DEPLOY_BLOCK`.
 
 ---
 
 ## Step 4 — Deploy the registrar + authorize it
 
 ```bash
-forge script script/DeployRegistrar.s.sol --rpc-url base --broadcast --verify
+cd contracts   # so the .env symlink + the `base` rpc alias resolve
+forge script script/DeployRegistrar.s.sol --rpc-url base --broadcast --verify --account tortoise-admin --sender <ADMIN_ADDR>
 ```
 Record → `TORTOISE_REGISTRAR_ADDRESS`. Then **one more owner-only tx** on the L2Registry:
 
 ```bash
 cast send <L2_REGISTRY_ADDRESS> "addRegistrar(address)" <TORTOISE_REGISTRAR_ADDRESS> \
-  --rpc-url base --private-key $ADMIN_PRIVATE_KEY
+  --rpc-url base --account tortoise-admin
 ```
 (The registrar cannot mint until this is done.)
 
@@ -76,10 +81,12 @@ cast send <L2_REGISTRY_ADDRESS> "addRegistrar(address)" <TORTOISE_REGISTRAR_ADDR
 ## Step 5 — Set Vercel env + redeploy
 
 In Vercel project settings, set (NO private key):
+`NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS` (**required — the browser reads register + purchase from this**),
 `RIGHTS_REGISTRY_ADDRESS`, `WALRUS_PUBLISHER`, `WALRUS_AGGREGATOR`, `WALRUS_EPOCHS`,
 `TREASURY_ADDRESS`, `ENS_PARENT`, `L2_REGISTRY_ADDRESS`, `TORTOISE_REGISTRAR_ADDRESS`,
 `USDC_ADDRESS`, `TORTOISE_API_BASE`, `NEXT_PUBLIC_RPC_URL`, `BASE_RPC_URL`.
-Redeploy. `/api/opt-in` flips from "not configured" to working.
+Redeploy. `/api/opt-in` flips from "not configured" to working, and the on-page register +
+purchase buttons get a real contract address (without the `NEXT_PUBLIC_` one they call viem with `""`).
 
 ---
 
@@ -108,6 +115,7 @@ On the live app `/song/<slug>` (demo: a song under ~9 MiB — `mi-amor-por-ti` f
 node scripts/mint-song-name.mjs <slug>
 ```
 Reads the on-chain record, sets pointer text records, mints `<slug>.tortmusic.eth`.
+(The on-chain `songId` IS the slug — the opt-in route keys by it — so `<slug>` needs no `--song-id`.)
 
 ---
 

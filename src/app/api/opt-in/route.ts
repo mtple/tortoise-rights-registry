@@ -63,6 +63,11 @@ export async function POST(req: Request) {
   if (!isAddress(song.walletAddress)) return bad("song has no valid artist walletAddress");
   const artist = getAddress(song.walletAddress) as Address;
 
+  // Canonical on-chain song key: prefer the human slug, so the ENS name <slug>.tortmusic.eth, the
+  // mint CLI, and the verify script all key by the SAME value with no extra flags. Fall back to the
+  // Tortoise id only for the paste flow, where no slug exists. (review fix: songId must == slug)
+  const canonicalSongId = song.urlSlug ?? (body.slug ? String(body.slug) : song.id);
+
   // Fetch audio + hash it (the consent anchors to these exact bytes).
   let audio;
   try {
@@ -75,7 +80,7 @@ export async function POST(req: Request) {
   const termsHash = await licenseTermsHash();
 
   const message: ConsentMessage = {
-    songId: song.id,
+    songId: canonicalSongId,
     artist,
     audioHash,
     permissionMode: PERMISSION_MODE,
@@ -100,7 +105,7 @@ export async function POST(req: Request) {
       typedData,
       artist,
       audio: { keccak256: audioHash, mimeType: audio.mimeType, bytes: audio.bytes.length, sourceIpfsCid: ipfsCidFromUrl(song.url) },
-      song: { id: song.id, slug: song.urlSlug ?? body.slug ?? null, title: song.title, artistName: song.artist, fid: song.artistFid ?? null },
+      song: { id: canonicalSongId, slug: song.urlSlug ?? body.slug ?? null, title: song.title, artistName: song.artist, fid: song.artistFid ?? null },
       licenseTermsHash: termsHash,
       timestamp,
     });
@@ -129,7 +134,7 @@ export async function POST(req: Request) {
   }
 
   const { manifest, bytes: manifestBytes, hash: manifestHash } = buildSongManifest({
-    songId: song.id,
+    songId: canonicalSongId,
     slug: song.urlSlug ?? String(body.slug ?? ""),
     title: song.title,
     artist: { address: artist, name: song.artist, fid: song.artistFid },
@@ -165,7 +170,7 @@ export async function POST(req: Request) {
     priceUsdc,
     artist,
     registerArgs: {
-      songId: song.id,
+      songId: canonicalSongId,
       artist,
       manifestHash,
       audioHash,

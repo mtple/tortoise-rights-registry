@@ -6,11 +6,13 @@ import {TortoiseRightsRegistry} from "../src/TortoiseRightsRegistry.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @notice Deploys TortoiseRightsRegistry. Constructor args come from env so no secrets are in code.
-/// @dev Dry-run on a local Base fork first:
-///        anvil --fork-url $BASE_RPC_URL    # in another shell
-///        forge script script/Deploy.s.sol --rpc-url http://localhost:8545
-///      Real broadcast (admin runs this; key from env/keystore, never committed):
-///        forge script script/Deploy.s.sol --rpc-url base --broadcast --verify
+/// @dev forge reads env from contracts/, so first: `ln -sf ../.env .env` (gitignored) to expose
+///      BASE_RPC_URL / USDC_ADDRESS / TREASURY_ADDRESS / ETHERSCAN_API_KEY.
+///      Dry-run on a local Base fork first:
+///        anvil --fork-url "$BASE_RPC_URL"    # in another shell
+///        forge script script/Deploy.s.sol --rpc-url http://localhost:8545 --sender <ADMIN_ADDR>
+///      Real broadcast (admin runs this; sign with a keystore — `--broadcast` alone will NOT sign):
+///        forge script script/Deploy.s.sol --rpc-url base --broadcast --verify --account tortoise-admin --sender <ADMIN_ADDR>
 ///
 ///      ⚠️ The EIP-712 domain binds this contract's address — deploy BEFORE collecting any
 ///         opt-in signature; a redeploy invalidates every signature (C4).
