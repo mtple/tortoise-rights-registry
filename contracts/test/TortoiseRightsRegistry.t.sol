@@ -310,7 +310,7 @@ contract PurchaseTest is Base {
         vm.startPrank(buyer);
         vm.expectEmit(true, true, false, true, address(reg));
         emit TortoiseRightsRegistry.LicensePurchased(key, SONG_ID, buyer, MANIFEST_HASH, PRICE);
-        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH);
+        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH, PRICE);
         vm.stopPrank();
 
         assertEq(reg.licenses(key, buyer), MANIFEST_HASH, "license snapshot");
@@ -323,9 +323,9 @@ contract PurchaseTest is Base {
         _fundAndApprove(buyer, PRICE);
         _fundAndApprove(buyer2, PRICE);
         vm.prank(buyer);
-        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH);
+        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH, PRICE);
         vm.prank(buyer2);
-        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH);
+        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH, PRICE);
         assertEq(reg.licenses(reg.songKey(SONG_ID), buyer), MANIFEST_HASH);
         assertEq(reg.licenses(reg.songKey(SONG_ID), buyer2), MANIFEST_HASH);
         assertEq(usdc.balanceOf(treasury), uint256(PRICE) * 2, "treasury got both");
@@ -335,10 +335,10 @@ contract PurchaseTest is Base {
     function test_purchase_sameBuyerTwiceReverts() public {
         _fundAndApprove(buyer, uint256(PRICE) * 2);
         vm.prank(buyer);
-        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH);
+        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH, PRICE);
         vm.prank(buyer);
         vm.expectRevert(TortoiseRightsRegistry.AlreadyLicensed.selector);
-        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH);
+        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH, PRICE);
     }
 
     // C2/C5: stale expectedManifestHash (artist re-registered) reverts safely.
@@ -346,7 +346,7 @@ contract PurchaseTest is Base {
         _fundAndApprove(buyer, PRICE);
         vm.prank(buyer);
         vm.expectRevert(TortoiseRightsRegistry.ManifestMismatch.selector);
-        reg.purchaseSongLicense(SONG_ID, keccak256("some-old-manifest"));
+        reg.purchaseSongLicense(SONG_ID, keccak256("some-old-manifest"), PRICE);
     }
 
     // Revoked song: no new licenses.
@@ -356,14 +356,14 @@ contract PurchaseTest is Base {
         _fundAndApprove(buyer, PRICE);
         vm.prank(buyer);
         vm.expectRevert(TortoiseRightsRegistry.LicenseInactive.selector);
-        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH);
+        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH, PRICE);
     }
 
     function test_purchase_unregisteredReverts() public {
         _fundAndApprove(buyer, PRICE);
         vm.prank(buyer);
         vm.expectRevert(TortoiseRightsRegistry.NotRegistered.selector);
-        reg.purchaseSongLicense("nope", MANIFEST_HASH);
+        reg.purchaseSongLicense("nope", MANIFEST_HASH, PRICE);
     }
 
     // C14: insufficient allowance reverts (SafeERC20 surfaces the token revert).
@@ -371,7 +371,7 @@ contract PurchaseTest is Base {
         usdc.mint(buyer, PRICE); // funded but no approve
         vm.prank(buyer);
         vm.expectRevert(); // SafeERC20 bubbles the "ALLOWANCE" revert
-        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH);
+        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH, PRICE);
         // license must NOT be recorded on a failed payment (checks-effects-interactions reverts all)
         assertEq(reg.licenses(reg.songKey(SONG_ID), buyer), bytes32(0), "no license on failed pay");
     }
@@ -380,10 +380,76 @@ contract PurchaseTest is Base {
     function test_purchase_snapshotSurvivesRevoke() public {
         _fundAndApprove(buyer, PRICE);
         vm.prank(buyer);
-        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH);
+        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH, PRICE);
         vm.prank(artist);
         reg.revokeConsent(SONG_ID);
         assertEq(reg.licenses(reg.songKey(SONG_ID), buyer), MANIFEST_HASH, "snapshot survives revoke");
+    }
+
+    // AUDIT F1 — price slippage guard: a buyer who set maxPrice is protected when the live price
+    // exceeds it. Reverts PriceTooHigh rather than charging the higher amount.
+    function test_purchase_priceAboveMaxReverts() public {
+        _fundAndApprove(buyer, uint256(PRICE) * 100);
+        vm.prank(buyer);
+        vm.expectRevert(TortoiseRightsRegistry.PriceTooHigh.selector);
+        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH, PRICE - 1); // willing to pay < listed
+    }
+
+    // AUDIT F1 — the actual exploit the audit found: artist front-runs a generous-allowance buyer
+    // by re-registering a HIGHER price under the SAME manifestHash. The maxPrice guard now stops it;
+    // without the guard this drained the buyer's full allowance (PoC charged 10_000 USDC for 1).
+    function test_purchase_priceFrontRun_blockedByMaxPrice() public {
+        // Buyer approves a generous allowance and intends to pay the listed 5 USDC.
+        _fundAndApprove(buyer, uint256(PRICE) * 1000);
+
+        // Artist front-runs: same manifestHash, same audio/terms, fresh sig at ts+1, price x1000.
+        uint64 ts2 = 1001;
+        uint96 jacked = PRICE * 1000;
+        bytes memory sig = _sign(artistPk, ts2);
+        vm.prank(artist);
+        reg.registerSong(
+            SONG_ID, artist, MANIFEST_HASH, AUDIO_HASH, MODE, TERMS_HASH, MANIFEST_BLOB, AUDIO_BLOB, jacked, ts2, sig
+        );
+
+        // Buyer's pending purchase, still bounded at the price they saw, now reverts instead of draining.
+        vm.prank(buyer);
+        vm.expectRevert(TortoiseRightsRegistry.PriceTooHigh.selector);
+        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH, PRICE);
+
+        // No funds moved, no license recorded.
+        assertEq(usdc.balanceOf(treasury), 0, "treasury untouched");
+        assertEq(reg.licenses(reg.songKey(SONG_ID), buyer), bytes32(0), "no license recorded");
+    }
+
+    // An honest re-price the buyer accepts still works: buyer raises maxPrice to the new price.
+    function test_purchase_acceptsHigherPriceWhenMaxAllows() public {
+        uint64 ts2 = 1001;
+        uint96 newPrice = PRICE * 2;
+        bytes memory sig = _sign(artistPk, ts2);
+        vm.prank(artist);
+        reg.registerSong(
+            SONG_ID, artist, MANIFEST_HASH, AUDIO_HASH, MODE, TERMS_HASH, MANIFEST_BLOB, AUDIO_BLOB, newPrice, ts2, sig
+        );
+        _fundAndApprove(buyer, newPrice);
+        vm.prank(buyer);
+        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH, newPrice);
+        assertEq(usdc.balanceOf(treasury), newPrice, "treasury got the accepted higher price");
+    }
+}
+
+contract ZeroManifestTest is Base {
+    // AUDIT F2 — registerSong must reject manifestHash == 0, which would collide with the
+    // bytes32(0) "no license" sentinel and break the AlreadyLicensed guard + snapshot.
+    function test_register_rejectsZeroManifest() public {
+        uint64 ts = 1000;
+        bytes32 digest = reg.consentDigest(SONG_ID, artist, AUDIO_HASH, MODE, TERMS_HASH, true, ts);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(artistPk, digest);
+        bytes memory sig = abi.encodePacked(r, s, v);
+        vm.prank(artist);
+        vm.expectRevert(TortoiseRightsRegistry.ZeroManifest.selector);
+        reg.registerSong(
+            SONG_ID, artist, bytes32(0), AUDIO_HASH, MODE, TERMS_HASH, MANIFEST_BLOB, AUDIO_BLOB, PRICE, ts, sig
+        );
     }
 }
 

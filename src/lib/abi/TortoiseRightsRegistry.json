@@ -188,6 +188,11 @@
         "name": "expectedManifestHash",
         "type": "bytes32",
         "internalType": "bytes32"
+      },
+      {
+        "name": "maxPrice",
+        "type": "uint96",
+        "internalType": "uint96"
       }
     ],
     "outputs": [],
@@ -614,6 +619,11 @@
   },
   {
     "type": "error",
+    "name": "PriceTooHigh",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "SafeERC20FailedOperation",
     "inputs": [
       {
@@ -642,6 +652,11 @@
   {
     "type": "error",
     "name": "ZeroArtist",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroManifest",
     "inputs": []
   }
 ]
