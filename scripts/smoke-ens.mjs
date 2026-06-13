@@ -12,8 +12,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createWalletClient, createPublicClient, http, namehash, encodeFunctionData, parseAbi, getAddress } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
 import { base, mainnet } from "viem/chains";
+import { loadAdminAccount } from "./lib/keystore.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -29,18 +29,18 @@ if (!label) {
   console.error("usage: smoke-ens.mjs <label>   (a throwaway label)");
   process.exit(64);
 }
-const PK = process.env.ADMIN_PRIVATE_KEY;
 const REGISTRAR = process.env.TORTOISE_REGISTRAR_ADDRESS;
 const L2_REGISTRY = process.env.L2_REGISTRY_ADDRESS;
 const ENS_PARENT = process.env.ENS_PARENT || "tortmusic.eth";
-for (const [k, v] of [["ADMIN_PRIVATE_KEY", PK], ["TORTOISE_REGISTRAR_ADDRESS", REGISTRAR], ["L2_REGISTRY_ADDRESS", L2_REGISTRY]]) {
+for (const [k, v] of [["TORTOISE_REGISTRAR_ADDRESS", REGISTRAR], ["L2_REGISTRY_ADDRESS", L2_REGISTRY]]) {
   if (!v) {
     console.error(`Missing required env ${k} (ENS must be deployed first — see plans/PREREQUISITES.md).`);
     process.exit(78);
   }
 }
 
-const account = privateKeyToAccount(PK.startsWith("0x") ? PK : `0x${PK}`);
+// Signing account from the forge keystore (prompts for password) — no raw key in env. (user policy)
+const account = await loadAdminAccount();
 const wallet = createWalletClient({ account, chain: base, transport: http(process.env.BASE_RPC_URL || undefined) });
 const baseClient = createPublicClient({ chain: base, transport: http(process.env.BASE_RPC_URL || undefined) });
 const l1Client = createPublicClient({ chain: mainnet, transport: http(process.env.L1_RPC_URL || undefined) });

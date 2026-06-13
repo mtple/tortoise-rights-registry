@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Admin CLI (plan §7 Phase 3.1) — mint <slug>.tortmusic.eth with text records for an opted-in song.
-// Owner-only: reads ADMIN_PRIVATE_KEY from env/keystore. NEVER run from the hosted app.
+// Owner-only: signs with the forge keystore (prompts for password). NEVER run from the hosted app.
 //
 //   node scripts/mint-song-name.mjs <label> [--song-id <id>] [--owner <addr>]
 //
@@ -22,8 +22,8 @@ import {
   parseAbi,
   getAddress,
 } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
+import { loadAdminAccount } from "./lib/keystore.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -51,11 +51,6 @@ if (!label) {
   process.exit(64);
 }
 
-const PK = process.env.ADMIN_PRIVATE_KEY;
-if (!PK) {
-  console.error("ADMIN_PRIVATE_KEY not set (use .env or a keystore). Refusing to run.");
-  process.exit(78);
-}
 const REGISTRAR = need("TORTOISE_REGISTRAR_ADDRESS");
 const REGISTRY = need("RIGHTS_REGISTRY_ADDRESS");
 const ENS_PARENT = process.env.ENS_PARENT || "tortmusic.eth";
@@ -67,7 +62,8 @@ function need(n) {
   return process.env[n];
 }
 
-const account = privateKeyToAccount(PK.startsWith("0x") ? PK : `0x${PK}`);
+// Signing account from the forge keystore (prompts for password) — no raw key in env. (user policy)
+const account = await loadAdminAccount();
 const wallet = createWalletClient({ account, chain: base, transport: http(process.env.BASE_RPC_URL || undefined) });
 const pub = createPublicClient({ chain: base, transport: http(process.env.BASE_RPC_URL || undefined) });
 
