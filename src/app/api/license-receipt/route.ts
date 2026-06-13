@@ -11,6 +11,9 @@ import { putBlob } from "@/lib/walrus";
 import { basePublicClient } from "@/lib/client";
 import { readLicense, RIGHTS_REGISTRY_ADDRESS } from "@/lib/registry";
 
+// One Walrus PUT of a small manifest (~7s); raise above Vercel's default timeout for safety.
+export const maxDuration = 60;
+
 function bad(message: string, status = 400) {
   return NextResponse.json({ message }, { status });
 }

@@ -18,6 +18,10 @@ import { RIGHTS_REGISTRY_ADDRESS, verifyConsent } from "@/lib/registry";
 import { basePublicClient, BASE_CHAIN_ID } from "@/lib/client";
 import { consentTypes, type ConsentMessage } from "@/lib/eip712";
 
+// Walrus PUTs are slow (~7-9s each); the store phase does fetch-audio + 2 PUTs (~18s total),
+// which exceeds Vercel's default function timeout. Raise to 60s (requires Vercel Pro).
+export const maxDuration = 60;
+
 const PERMISSION_MODE = 0; // AI_TRAINING_ALLOWED
 const PERMISSION_MODE_NAME = "AI_TRAINING_ALLOWED";
 const LICENSE_NAME = "Tortoise AI Training License v0.1";
