@@ -55,3 +55,6 @@ tmp/
 *.m4a
 *.aac
 *.ogg
+
+# --- Solidity audit bundle (transient) ---
+.audit-*/

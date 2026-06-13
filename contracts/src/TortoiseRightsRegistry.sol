@@ -77,12 +77,14 @@ contract TortoiseRightsRegistry is EIP712, Ownable {
     error OnlyArtist();
     error ArtistMismatch();
     error ZeroArtist();
+    error ZeroManifest(); // manifestHash == 0 collides with the "no license" sentinel
     error NotRegistered();
     error StaleConsent(); // consentTimestamp not strictly greater than stored (C1)
     error BadPermissionMode();
     error InvalidSignature();
     error LicenseInactive();
     error ManifestMismatch(); // expectedManifestHash != live manifestHash (C2/C5)
+    error PriceTooHigh(); // live priceUsdc exceeds the buyer's maxPrice (C5 price slippage)
     error AlreadyLicensed(); // same buyer, repeat purchase (C13)
 
     /// @param usdc     USDC token address (Base mainnet 0x8335..2913).
@@ -156,6 +158,9 @@ contract TortoiseRightsRegistry is EIP712, Ownable {
         if (artist == address(0)) revert ZeroArtist();
         if (msg.sender != artist) revert OnlyArtist();
         if (permissionMode > uint8(type(PermissionMode).max)) revert BadPermissionMode();
+        // manifestHash doubles as the per-buyer license marker; bytes32(0) is the "no license"
+        // sentinel, so a zero manifest would break the AlreadyLicensed guard + snapshot (audit F2).
+        if (manifestHash == bytes32(0)) revert ZeroManifest();
 
         bytes32 key = keccak256(bytes(songId));
         SongRecord storage s = songs[key];
@@ -212,17 +217,24 @@ contract TortoiseRightsRegistry is EIP712, Ownable {
     ///      manifest (snapshot + no bait-and-switch, C2/C5). Blocks only a REPEAT purchase by the
     ///      same buyer (C13). Payment goes directly to treasury via SafeERC20 (C14).
     /// @param expectedManifestHash The manifest hash the buyer read just before sending the tx.
-    function purchaseSongLicense(string calldata songId, bytes32 expectedManifestHash) external {
+    /// @param maxPrice The most USDC the buyer is willing to pay; reverts if the live price exceeds it.
+    ///        Binds the price the buyer agreed to, the same way expectedManifestHash binds the content
+    ///        — without it, an artist could raise priceUsdc via a same-manifest re-registration and
+    ///        drain a generous allowance (audit F1).
+    function purchaseSongLicense(string calldata songId, bytes32 expectedManifestHash, uint96 maxPrice)
+        external
+    {
         bytes32 key = keccak256(bytes(songId));
         SongRecord storage s = songs[key];
         if (s.artist == address(0)) revert NotRegistered();
         if (!s.licenseActive) revert LicenseInactive();
         if (expectedManifestHash != s.manifestHash) revert ManifestMismatch();
+        uint96 price = s.priceUsdc;
+        if (price > maxPrice) revert PriceTooHigh();
         if (licenses[key][msg.sender] != bytes32(0)) revert AlreadyLicensed();
 
         // Record the snapshot BEFORE the external transfer (checks-effects-interactions).
         licenses[key][msg.sender] = s.manifestHash;
-        uint96 price = s.priceUsdc;
 
         USDC.safeTransferFrom(msg.sender, treasury, price);
 

@@ -56,7 +56,7 @@ contract PurchaseForkTest is Test {
 
         vm.startPrank(buyer);
         IERC20(USDC).approve(address(reg), PRICE);
-        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH);
+        reg.purchaseSongLicense(SONG_ID, MANIFEST_HASH, PRICE);
         vm.stopPrank();
 
         assertEq(reg.licenses(reg.songKey(SONG_ID), buyer), MANIFEST_HASH, "license recorded");
