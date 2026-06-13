@@ -1,0 +1,49 @@
+# --- Secrets (NEVER commit) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+build/
+dist/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+
+# --- Package manager ---
+.pnpm-store/
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Foundry ---
+contracts/out/
+contracts/cache/
+contracts/broadcast/**/dry-run/
+contracts/.gas-snapshot
+# keep broadcast/<chain>/run-latest.json for deploy provenance, ignore noisy run-*.json
+contracts/broadcast/**/run-[0-9]*.json
+
+# --- Test / coverage ---
+coverage/
+*.lcov
+.nyc_output/
+
+# --- Editor / OS ---
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*~
+
+# --- Local dev fixtures (keep checked-in fixtures, ignore scratch) ---
+scratch/
+tmp/
+*.local

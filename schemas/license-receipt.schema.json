@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "tortoise-rights/license/1.0",
+  "title": "Tortoise Rights — License Receipt Manifest",
+  "description": "Built + uploaded to Walrus after a successful purchase. Optional/derived — the on-chain licenses mapping + LicensePurchased event are authoritative.",
+  "type": "object",
+  "required": ["schema", "songId", "buyer", "songManifestHash", "licenseTermsHash", "paymentTx", "timestamp"],
+  "additionalProperties": true,
+  "properties": {
+    "schema": { "const": "tortoise-rights/license/1.0" },
+    "songId": { "type": "string" },
+    "buyer": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+    "songManifestHash": { "type": "string", "pattern": "^0x[a-fA-F0-9]{64}$", "description": "the snapshot the buyer licensed; matches licenses[key][buyer]" },
+    "licenseTermsHash": { "type": "string", "pattern": "^0x[a-fA-F0-9]{64}$" },
+    "paymentTx": { "type": "string", "pattern": "^0x[a-fA-F0-9]{64}$" },
+    "timestamp": { "type": "integer" }
+  }
+}
