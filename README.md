@@ -77,7 +77,7 @@ pnpm dev
 ## Full walkthrough (deploy → opt-in → name → license → verify)
 
 Requires a funded admin wallet on Base, and an artist + buyer wallet. See
-`PREREQUISITES.md` for the one-time on-chain setup (Durin L2Registry, the two L1
+`plans/PREREQUISITES.md` for the one-time on-chain setup (Durin L2Registry, the two L1
 resolver txs, funding). Walrus uses testnet (free) — see the note below.
 
 ```bash
@@ -136,7 +136,7 @@ manifests) are stored on the free, open **Walrus testnet** publisher while the c
 USDC, and ENS all run on **mainnet**. A `blobId` is a deterministic content hash, so
 integrity is provable regardless of which Walrus network holds the bytes. Endpoints are
 env-driven (`WALRUS_PUBLISHER` / `WALRUS_AGGREGATOR`), so swapping to a self-run mainnet
-publisher later is a config change. See `PREREQUISITES.md`.
+publisher later is a config change. See `plans/PREREQUISITES.md`.
 
 **Durability is finite.** Testnet blobs are deleted once `WALRUS_EPOCHS` elapse (and testnet is
 periodically reset), so the bytes — and therefore `verify-song-license.mjs`'s audio + manifest

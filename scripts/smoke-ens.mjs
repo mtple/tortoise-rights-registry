@@ -35,7 +35,7 @@ const L2_REGISTRY = process.env.L2_REGISTRY_ADDRESS;
 const ENS_PARENT = process.env.ENS_PARENT || "tortmusic.eth";
 for (const [k, v] of [["ADMIN_PRIVATE_KEY", PK], ["TORTOISE_REGISTRAR_ADDRESS", REGISTRAR], ["L2_REGISTRY_ADDRESS", L2_REGISTRY]]) {
   if (!v) {
-    console.error(`Missing required env ${k} (ENS must be deployed first — see PREREQUISITES.md).`);
+    console.error(`Missing required env ${k} (ENS must be deployed first — see plans/PREREQUISITES.md).`);
     process.exit(78);
   }
 }
