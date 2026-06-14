@@ -119,10 +119,11 @@ function done() {
     const A = admin || "<ADMIN_ADDR>";
     console.log("Finish the gate with these keystore-signed steps (you run them — this script holds no key):");
     console.log("  1. Fund the wallet:    https://faucet.circle.com  (20 USDC / 2h / address)");
-    console.log("  2. Deploy the registry (best smoke test — the real artifact):");
+    console.log("  2. Deploy the registry to Arc (best smoke test — the real artifact):");
     console.log("       cd contracts && ln -sf ../.env .env");
-    console.log(`       forge script script/Deploy.s.sol --rpc-url ${RPC} --broadcast --account tortoise-admin --sender ${A}`);
-    console.log("       # (set USDC_ADDRESS + TREASURY_ADDRESS for Arc in .env first; drop --verify if ArcScan is flaky)");
+    console.log(`       forge script script/DeployArc.s.sol --rpc-url ${RPC} --broadcast --account tortoise-admin --sender ${A}`);
+    console.log("       # DeployArc reads ARC_USDC_ADDRESS/ARC_TREASURY_ADDRESS + asserts chain 5042002");
+    console.log("       # (NOT Deploy.s.sol — that's the Base script with Base constructor args and no Arc guard)");
     console.log("  3. Read it back:       cast call <DEPLOYED> \"treasury()(address)\" --rpc-url " + RPC);
     console.log(`  4. ERC-20 round-trip:  cast send ${ARC_USDC} "transfer(address,uint256)" <ANY_ADDR> 1 --rpc-url ${RPC} --account tortoise-admin`);
     console.log("\nABORT to Base-only if: the faucet caps you below ~2 deploys, reads time out, or a deploy");

@@ -62,11 +62,10 @@ const REGISTRY_CHAIN_ID = Number(process.env.REGISTRY_CHAIN_ID || base.id);
 const ON_ARC = REGISTRY_CHAIN_ID === arcTestnet.id;
 const registryChain = ON_ARC ? arcTestnet : base;
 
-// Registry address + deploy block are chain-keyed: on Arc, prefer ARC_* so the Base values in .env
-// stay untouched (flip back to Base by just changing REGISTRY_CHAIN_ID). Falls back to the bare vars.
-const REGISTRY = ON_ARC
-  ? (process.env.ARC_RIGHTS_REGISTRY_ADDRESS || need("RIGHTS_REGISTRY_ADDRESS"))
-  : need("RIGHTS_REGISTRY_ADDRESS");
+// Registry address + deploy block are chain-keyed: on Arc, require ARC_RIGHTS_REGISTRY_ADDRESS (no
+// Base fallback — verifying against the Base registry on Arc would read the wrong chain). The Base
+// value in .env stays untouched (only used when REGISTRY_CHAIN_ID is Base).
+const REGISTRY = ON_ARC ? need("ARC_RIGHTS_REGISTRY_ADDRESS") : need("RIGHTS_REGISTRY_ADDRESS");
 const DEPLOY_BLOCK = ON_ARC
   ? (process.env.ARC_REGISTRY_DEPLOY_BLOCK || process.env.REGISTRY_DEPLOY_BLOCK)
   : process.env.REGISTRY_DEPLOY_BLOCK;

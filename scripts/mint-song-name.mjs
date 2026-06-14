@@ -65,9 +65,9 @@ function need(n) {
 // else Base) — using the Arc registry address there — while the ENS name is MINTED on Base. Mixing
 // these up was the bug: reading the Base registry on an Arc deployment reports the song unregistered.
 const ON_ARC = Number(process.env.REGISTRY_CHAIN_ID || base.id) === arcTestnet.id;
-const REGISTRY = ON_ARC
-  ? (process.env.ARC_RIGHTS_REGISTRY_ADDRESS || need("RIGHTS_REGISTRY_ADDRESS"))
-  : need("RIGHTS_REGISTRY_ADDRESS");
+// On Arc, require ARC_RIGHTS_REGISTRY_ADDRESS (no Base fallback — reading the Base registry on Arc
+// reports the song unregistered). Base value untouched; only used when the registry chain is Base.
+const REGISTRY = ON_ARC ? need("ARC_RIGHTS_REGISTRY_ADDRESS") : need("RIGHTS_REGISTRY_ADDRESS");
 
 // Signing account from the forge keystore (prompts for password) — no raw key in env. (user policy)
 const account = await loadAdminAccount();

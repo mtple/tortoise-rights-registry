@@ -33,15 +33,16 @@ function envAddress(...candidates: (string | undefined)[]): Address {
 // keyless API routes (server) and the song/purchase pages (client), so we prefer the NEXT_PUBLIC_
 // twin and fall back to the bare name for server/scripts. Vercel must set NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS.
 //
-// Chain-keyed like USDC: on Arc, prefer ARC_RIGHTS_REGISTRY_ADDRESS so the Base deployment address
-// stays untouched in .env — flipping REGISTRY_CHAIN_ID is all it takes to switch back to Base.
+// Chain-keyed like USDC: on Arc, read ONLY ARC_RIGHTS_REGISTRY_ADDRESS (no Base fallback). Falling
+// back to the Base address on Arc would send Arc-domain signatures + reads/writes to an address with
+// no contract on Arc — confusing failures or no-op txs. With no fallback, a missing Arc address
+// yields "" so the routes' existing "not configured" guard fails loudly + early instead. The Base
+// address in .env stays untouched (only read when REGISTRY_CHAIN_ID is Base).
 export const RIGHTS_REGISTRY_ADDRESS =
   REGISTRY_CHAIN_ID === ARC_CHAIN_ID
     ? envAddress(
         process.env.NEXT_PUBLIC_ARC_RIGHTS_REGISTRY_ADDRESS,
         process.env.ARC_RIGHTS_REGISTRY_ADDRESS,
-        process.env.NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS,
-        process.env.RIGHTS_REGISTRY_ADDRESS,
       )
     : envAddress(process.env.NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS, process.env.RIGHTS_REGISTRY_ADDRESS);
 // USDC used for license payments — on the registry chain (both decimals()=6). Pick the address for
