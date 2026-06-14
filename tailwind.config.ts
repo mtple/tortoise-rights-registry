@@ -8,7 +8,8 @@ const config: Config = {
     extend: {
       colors: {
         cream: "#cbbfb9",
-        ink: "#280274", // brand purple
+        ink: "#280274", // brand purple (dark)
+        grape: "#5b21c0", // brand purple (mid) — success/“ok” tone, on-brand vs. green
       },
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],

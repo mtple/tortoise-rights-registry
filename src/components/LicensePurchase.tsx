@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useAccount, useConnect, useChainId, useSwitchChain, useWriteContract, usePublicClient } from "wagmi";
+import { useAccount, useChainId, useSwitchChain, useWriteContract, usePublicClient } from "wagmi";
 import { base } from "wagmi/chains";
 import { erc20Abi, formatUnits, getAddress, type Address, type Hex } from "viem";
-import { Button, Card, StatusBadge } from "@/components/ui";
+import { Button, Card, StatusBadge, WalletButton } from "@/components/ui";
 import { tortoiseRightsRegistryAbi, RIGHTS_REGISTRY_ADDRESS, USDC_ADDRESS, songKey } from "@/lib/registry";
 
 type Rec = { artist: Address; licenseActive: boolean; priceUsdc: bigint; manifestHash: Hex; licenseTermsHash: Hex };
@@ -12,7 +12,6 @@ type Step = "idle" | "approving" | "purchasing" | "receipt" | "done" | "error";
 
 export function LicensePurchase({ songId }: { songId: string }) {
   const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
@@ -140,13 +139,7 @@ export function LicensePurchase({ songId }: { songId: string }) {
           <span className="ml-2">This wallet holds a license for this song.</span>
         </p>
       ) : !isConnected ? (
-        <div className="flex flex-wrap gap-2">
-          {connectors.map((c) => (
-            <Button key={c.uid} onClick={() => connect({ connector: c })}>
-              Connect {c.name}
-            </Button>
-          ))}
-        </div>
+        <WalletButton />
       ) : rec.licenseActive ? (
         <Button onClick={buy} disabled={step === "approving" || step === "purchasing" || step === "receipt"}>
           {step === "idle" || step === "error" || step === "done" ? "License with USDC (2 steps)" : "Working…"}

@@ -3,23 +3,20 @@
 import { useState, type ReactNode } from "react";
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { base } from "wagmi/chains";
-import { injected, baseAccount } from "wagmi/connectors";
+import { injected } from "wagmi/connectors";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-// Base mainnet only (D1). Connectors:
-//   - baseAccount(): the dedicated Base Account (smart wallet, passkey) connector. This is what
-//     lets an artist connect their actual Base Account as the SAME address recorded on the song.
-//     NOTE: we deliberately do NOT use coinbaseWallet() — with the Coinbase Wallet browser
-//     extension installed it routes to the extension's EOA (a different address), which broke
-//     opt-in (signer != song walletAddress). baseAccount is a distinct, smart-wallet-only connector.
-//   - injected(): plain EOA (e.g. the buyer, or anyone using MetaMask). Listed second.
+// Base mainnet only (D1). Connectors: injected() only.
+//   wagmi's EIP-6963 multi-injected discovery surfaces one entry per browser wallet the user has
+//   installed (MetaMask, Rainbow, Phantom, the Coinbase Wallet extension, etc.), so the connect
+//   modal lists each by name without us hard-coding them.
+//   We deliberately do NOT include baseAccount()/coinbaseWallet(): Base Account is intentionally
+//   removed from this app, and the Coinbase Wallet SDK connector routed to the extension's EOA
+//   (a different address) which broke opt-in (signer != song walletAddress).
 // Standalone browser app, so no Farcaster mini-app connector.
 const config = createConfig({
   chains: [base],
-  connectors: [
-    baseAccount({ appName: "Tortoise Rights Registry" }),
-    injected(),
-  ],
+  connectors: [injected()],
   transports: {
     [base.id]: http(process.env.NEXT_PUBLIC_RPC_URL || undefined),
   },

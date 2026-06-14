@@ -1,6 +1,7 @@
 "use client";
 
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { useAccount, useConnect, useDisconnect, type Connector } from "wagmi";
 
 export function Button({
   children,
@@ -30,9 +31,132 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
 export function StatusBadge({ kind, children }: { kind: "ok" | "warn" | "info"; children: ReactNode }) {
   const tone =
     kind === "ok"
-      ? "bg-green-700 text-white"
+      ? "bg-grape text-white"
       : kind === "warn"
         ? "bg-amber-600 text-white"
         : "bg-ink text-cream";
   return <span className={"inline-block rounded-full px-2.5 py-0.5 text-xs font-medium " + tone}>{children}</span>;
+}
+
+function shortAddr(a: string) {
+  return `${a.slice(0, 6)}…${a.slice(-4)}`;
+}
+
+// Single wallet control used everywhere: "Connect wallet" → a Tortoise-styled modal of the
+// browser wallets wagmi discovered (injected/EIP-6963); once connected, shows the address + a
+// "Disconnect" button. No Base Account option (intentionally removed from this app).
+export function WalletButton({ className = "" }: { className?: string }) {
+  const { address, isConnected } = useAccount();
+  const { connectors, connect, isPending } = useConnect();
+  const { disconnect } = useDisconnect();
+  const [open, setOpen] = useState(false);
+
+  // De-dupe connectors by name (EIP-6963 can surface the generic "Injected" alongside a named
+  // wallet); keep the named ones.
+  const seen = new Set<string>();
+  const options: Connector[] = connectors.filter((c) => {
+    if (seen.has(c.name)) return false;
+    seen.add(c.name);
+    return true;
+  });
+
+  if (isConnected && address) {
+    return (
+      <div className={"flex items-center gap-3 " + className}>
+        <span className="font-mono text-xs text-ink/70">{shortAddr(address)}</span>
+        <Button onClick={() => disconnect()}>Disconnect wallet</Button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Button className={className} onClick={() => setOpen(true)}>
+        Connect wallet
+      </Button>
+      {open && (
+        <WalletModal
+          options={options}
+          isPending={isPending}
+          onPick={(c) => {
+            connect({ connector: c });
+            setOpen(false);
+          }}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+function WalletModal({
+  options,
+  isPending,
+  onPick,
+  onClose,
+}: {
+  options: Connector[];
+  isPending: boolean;
+  onPick: (c: Connector) => void;
+  onClose: () => void;
+}) {
+  // Close on Escape.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="w-full max-w-sm space-y-4 rounded-2xl bg-cream p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Connect a wallet"
+      >
+        <div className="text-center">
+          <p className="text-lg font-bold text-ink">Connect a wallet</p>
+          <p className="text-sm text-ink/70">to opt songs in or buy a license</p>
+        </div>
+
+        <div className="space-y-2.5">
+          {options.length === 0 ? (
+            <p className="rounded-xl bg-white/70 p-4 text-center text-sm text-ink/70">
+              No browser wallet detected. Install MetaMask, Rainbow, Phantom, or another wallet
+              extension and reload.
+            </p>
+          ) : (
+            options.map((c) => (
+              <button
+                key={c.uid}
+                onClick={() => onPick(c)}
+                disabled={isPending}
+                className="flex w-full items-center gap-3 rounded-xl bg-white px-4 py-3.5 text-left font-semibold text-ink shadow-sm transition hover:bg-white/80 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {c.icon ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={c.icon} alt="" className="h-6 w-6 rounded" />
+                ) : (
+                  <span className="grid h-6 w-6 place-items-center rounded bg-ink text-[10px] font-bold text-cream">
+                    {c.name.slice(0, 1)}
+                  </span>
+                )}
+                <span>Sign in with {c.name}</span>
+              </button>
+            ))
+          )}
+        </div>
+
+        <button onClick={onClose} className="block w-full text-center text-sm text-ink/70 hover:text-ink">
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
 }

@@ -1,10 +1,10 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { useAccount, useConnect, useSignTypedData, useWriteContract, useChainId, useSwitchChain, usePublicClient } from "wagmi";
+import { useAccount, useSignTypedData, useWriteContract, useChainId, useSwitchChain, usePublicClient } from "wagmi";
 import { base } from "wagmi/chains";
 import { parseUnits, type Hex } from "viem";
-import { Button, Card, StatusBadge } from "@/components/ui";
+import { Button, Card, StatusBadge, WalletButton } from "@/components/ui";
 import { tortoiseRightsRegistryAbi, RIGHTS_REGISTRY_ADDRESS, tortoiseRegistrarAbi } from "@/lib/registry";
 import { TORTOISE_REGISTRAR_ADDRESS, buildSongTextRecords } from "@/lib/ens";
 import { LicensePurchase } from "@/components/LicensePurchase";
@@ -17,7 +17,6 @@ type Step = "idle" | "signing" | "storing" | "registering" | "naming" | "done" |
 export default function SongPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { signTypedDataAsync } = useSignTypedData();
@@ -206,18 +205,10 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
         />
 
         {!isConnected ? (
-          <div className="flex flex-wrap gap-2">
-            {connectors.map((c) => (
-              <Button key={c.uid} onClick={() => connect({ connector: c })}>
-                Connect {c.name}
-              </Button>
-            ))}
-          </div>
+          <WalletButton />
         ) : (
           <div className="space-y-2">
-            <p className="text-xs text-ink/60">
-              Connected: <span className="font-mono">{address}</span>
-            </p>
+            <WalletButton />
             <Button onClick={optIn} disabled={!song || step === "signing" || step === "storing" || step === "registering" || step === "naming"}>
               {step === "idle" || step === "error" || step === "done" ? "Sign consent & register" : "Working…"}
             </Button>
