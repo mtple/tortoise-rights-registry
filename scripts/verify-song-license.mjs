@@ -23,7 +23,7 @@ import {
   getAddress,
   parseAbi,
 } from "viem";
-import { base, mainnet, arcTestnet } from "viem/chains";
+import { base, mainnet } from "viem/chains";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -54,31 +54,13 @@ if (!slug) {
 }
 
 // ---- config ----
-// Two chains: the REGISTRY + payment + EIP-712 consent live on the registry chain (Arc testnet when
-// REGISTRY_CHAIN_ID=5042002, else Base); ENS subnames are always on Base (read via the L1 Universal
-// Resolver / CCIP, or directly off the L2Registry with --rpc-fallback). So `registryClient` reads
-// songs()/licenses() + re-verifies the signature, while baseClient/l1Client handle the ENS leg.
-const REGISTRY_CHAIN_ID = Number(process.env.REGISTRY_CHAIN_ID || base.id);
-const ON_ARC = REGISTRY_CHAIN_ID === arcTestnet.id;
-const registryChain = ON_ARC ? arcTestnet : base;
-
-// Registry address + deploy block are chain-keyed: on Arc, require ARC_RIGHTS_REGISTRY_ADDRESS (no
-// Base fallback — verifying against the Base registry on Arc would read the wrong chain). The Base
-// value in .env stays untouched (only used when REGISTRY_CHAIN_ID is Base).
-const REGISTRY = ON_ARC ? need("ARC_RIGHTS_REGISTRY_ADDRESS") : need("RIGHTS_REGISTRY_ADDRESS");
-const DEPLOY_BLOCK = ON_ARC
-  ? (process.env.ARC_REGISTRY_DEPLOY_BLOCK || process.env.REGISTRY_DEPLOY_BLOCK)
-  : process.env.REGISTRY_DEPLOY_BLOCK;
+const REGISTRY = need("RIGHTS_REGISTRY_ADDRESS");
 const L2_REGISTRY = process.env.L2_REGISTRY_ADDRESS || "";
 const ENS_PARENT = process.env.ENS_PARENT || "tortmusic.eth";
 const AGGREGATORS = (process.env.WALRUS_AGGREGATOR || "https://aggregator.walrus-testnet.walrus.space")
   .split(",").map((s) => s.trim()).filter(Boolean);
-
 const baseClient = createPublicClient({ chain: base, transport: http(process.env.BASE_RPC_URL || undefined) });
 const l1Client = createPublicClient({ chain: mainnet, transport: http(process.env.L1_RPC_URL || undefined) });
-const registryClient = ON_ARC
-  ? createPublicClient({ chain: arcTestnet, transport: http(process.env.ARC_RPC_URL || undefined) })
-  : baseClient;
 
 function need(name) {
   const v = process.env[name];
@@ -154,7 +136,7 @@ async function resolveText(name, key) {
 }
 
 async function main() {
-  console.log(`\nVerifying "${slug}"  (registry ${REGISTRY} on ${registryChain.name}; ENS on Base${rpcFallback ? ", --rpc-fallback" : ""})\n`);
+  console.log(`\nVerifying "${slug}"  (registry ${REGISTRY}${rpcFallback ? ", --rpc-fallback" : ""})\n`);
 
   // 1) Resolve songId — from ENS, or from --song-id (lets you skip ENS before names are minted).
   let songId = songIdArg;
@@ -176,7 +158,7 @@ async function main() {
   // 2) On-chain record.
   let s;
   try {
-    s = await registryClient.readContract({ address: getAddress(REGISTRY), abi: registryAbi, functionName: "songs", args: [songKey(songId)] });
+    s = await baseClient.readContract({ address: getAddress(REGISTRY), abi: registryAbi, functionName: "songs", args: [songKey(songId)] });
   } catch (e) {
     check(`read song record on-chain`, false, `${e.shortMessage || e.message} (is RIGHTS_REGISTRY_ADDRESS a deployed registry?)`);
     return done();
@@ -214,9 +196,9 @@ async function main() {
   // 5) Re-derive the EIP-712 Consent digest from the manifest and verify the artist's signature.
   try {
     const c = manifest.consent;
-    const digestOk = await registryClient.verifyTypedData({
+    const digestOk = await baseClient.verifyTypedData({
       address: getAddress(rec.artist),
-      domain: { name: "TortoiseRightsRegistry", version: "1", chainId: registryChain.id, verifyingContract: getAddress(REGISTRY) },
+      domain: { name: "TortoiseRightsRegistry", version: "1", chainId: base.id, verifyingContract: getAddress(REGISTRY) },
       types: consentTypes,
       primaryType: "Consent",
       message: {
@@ -248,17 +230,17 @@ async function main() {
   //    (authoritative; NOT the live manifest — re-registration can orphan the live blob).
   if (buyer) {
     const b = getAddress(buyer);
-    const licensed = await registryClient.readContract({ address: getAddress(REGISTRY), abi: registryAbi, functionName: "licenses", args: [songKey(songId), b] });
+    const licensed = await baseClient.readContract({ address: getAddress(REGISTRY), abi: registryAbi, functionName: "licenses", args: [songKey(songId), b] });
     check(`buyer holds a license (snapshot present)`, licensed !== "0x0000000000000000000000000000000000000000000000000000000000000000", `snapshot ${licensed}`);
 
     // Cross-check against the LicensePurchased event (best-effort — the snapshot above is
     // authoritative). Public RPCs cap eth_getLogs ranges (~10k blocks), so scope from the
     // registry's deploy block when known (REGISTRY_DEPLOY_BLOCK), else a bounded recent window.
     try {
-      const latest = await registryClient.getBlockNumber();
-      const deployBlock = DEPLOY_BLOCK ? BigInt(DEPLOY_BLOCK) : undefined;
+      const latest = await baseClient.getBlockNumber();
+      const deployBlock = process.env.REGISTRY_DEPLOY_BLOCK ? BigInt(process.env.REGISTRY_DEPLOY_BLOCK) : undefined;
       const fromBlock = deployBlock ?? (latest > 9000n ? latest - 9000n : 0n);
-      const logs = await registryClient.getContractEvents({
+      const logs = await baseClient.getContractEvents({
         address: getAddress(REGISTRY), abi: registryAbi, eventName: "LicensePurchased",
         args: { songKey: songKey(songId), buyer: b }, fromBlock, toBlock: "latest",
       });

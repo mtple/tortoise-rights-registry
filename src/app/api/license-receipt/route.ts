@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 import { isAddress, getAddress, type Address, type Hex } from "viem";
 import { buildLicenseReceipt } from "@/lib/manifest";
 import { putBlob } from "@/lib/walrus";
-import { registryPublicClient } from "@/lib/client";
+import { basePublicClient } from "@/lib/client";
 import { readLicense, RIGHTS_REGISTRY_ADDRESS } from "@/lib/registry";
 
 // One Walrus PUT of a small manifest (~7s); raise above Vercel's default timeout for safety.
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
   // Source the licensed manifest hash from the authoritative on-chain snapshot (not the client).
   let songManifestHash: Hex;
   try {
-    songManifestHash = await readLicense(registryPublicClient(), songId, getAddress(buyer) as Address);
+    songManifestHash = await readLicense(basePublicClient(), songId, getAddress(buyer) as Address);
   } catch (e) {
     return bad(`could not read on-chain license: ${(e as Error).message}`, 502);
   }

@@ -21,7 +21,6 @@
     "abi": "node scripts/extract-abi.mjs",
     "smoke:walrus": "node scripts/smoke-walrus.mjs",
     "smoke:ens": "node scripts/smoke-ens.mjs",
-    "smoke:arc": "node scripts/smoke-arc.mjs",
     "verify": "node scripts/verify-song-license.mjs",
     "mint:name": "node scripts/mint-song-name.mjs"
   },

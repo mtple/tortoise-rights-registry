@@ -5,7 +5,7 @@ import { useAccount, useChainId, useSwitchChain, useWriteContract, usePublicClie
 import { erc20Abi, formatUnits, getAddress, type Address, type Hex } from "viem";
 import { Button, Card, StatusBadge, WalletButton } from "@/components/ui";
 import { tortoiseRightsRegistryAbi, RIGHTS_REGISTRY_ADDRESS, USDC_ADDRESS, songKey } from "@/lib/registry";
-import { REGISTRY_CHAIN_ID } from "@/lib/client";
+import { BASE_CHAIN_ID } from "@/lib/client";
 import { links } from "@/lib/links";
 
 type Rec = { artist: Address; licenseActive: boolean; priceUsdc: bigint; manifestHash: Hex; licenseTermsHash: Hex };
@@ -16,11 +16,10 @@ export function LicensePurchase({ songId }: { songId: string }) {
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
-  // Pin the read client to the REGISTRY chain (not the wallet's current chain). The registry +
-  // licenses live there, and a buyer may still be on Base when REGISTRY_CHAIN_ID is Arc — awaiting
-  // switchChain doesn't rebind a plain usePublicClient() captured in the async handler, so reads
-  // would hit the Arc address on Base and abort. A chainId-pinned client always reads/​waits on Arc.
-  const client = usePublicClient({ chainId: REGISTRY_CHAIN_ID });
+  // Pin the read client to Base (not whatever chain the wallet happens to be on). The registry +
+  // licenses live on Base, and awaiting switchChain doesn't rebind a plain usePublicClient()
+  // captured in the async handler — a chainId-pinned client always reads/waits on Base.
+  const client = usePublicClient({ chainId: BASE_CHAIN_ID });
 
   const [rec, setRec] = useState<Rec | null>(null);
   const [licensed, setLicensed] = useState<boolean | null>(null);
@@ -57,7 +56,7 @@ export function LicensePurchase({ songId }: { songId: string }) {
     setMsg("");
     setTx(null);
     try {
-      if (chainId !== REGISTRY_CHAIN_ID) await switchChain({ chainId: REGISTRY_CHAIN_ID });
+      if (chainId !== BASE_CHAIN_ID) await switchChain({ chainId: BASE_CHAIN_ID });
 
       // Read price + manifest FRESH right before the tx (C5 + audit F1 maxPrice).
       const fresh = (await client.readContract({
@@ -73,6 +72,7 @@ export function LicensePurchase({ songId }: { songId: string }) {
       setStep("approving");
       setMsg("Approve USDC in your wallet…");
       const approveTx = await writeContractAsync({
+        chainId: BASE_CHAIN_ID, // pin to Base — never approve on whatever chain the wallet is on
         address: USDC_ADDRESS,
         abi: erc20Abi,
         functionName: "approve",
@@ -84,6 +84,7 @@ export function LicensePurchase({ songId }: { songId: string }) {
       setStep("purchasing");
       setMsg("Confirm the license purchase…");
       const buyTx = await writeContractAsync({
+        chainId: BASE_CHAIN_ID, // pin the purchase to Base
         address: RIGHTS_REGISTRY_ADDRESS,
         abi: tortoiseRightsRegistryAbi,
         functionName: "purchaseSongLicense",
@@ -162,7 +163,7 @@ export function LicensePurchase({ songId }: { songId: string }) {
       {step === "done" && tx && (
         <p className="text-sm">
           <StatusBadge kind="ok">purchased</StatusBadge>{" "}
-          <a className="ml-2 underline" href={links.registryTx(tx)} target="_blank" rel="noreferrer">
+          <a className="ml-2 underline" href={links.baseTx(tx)} target="_blank" rel="noreferrer">
             view tx
           </a>
         </p>
