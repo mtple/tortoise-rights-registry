@@ -1,6 +1,6 @@
 # Go-Live Runbook
 
-The code is complete and tested (39 Foundry + 16 vitest, mutation-proven; app live on
+The code is complete and tested (42 Foundry + 16 vitest, mutation-proven; app live on
 Vercel). What remains is a sequence of **on-chain transactions** (real funds) plus setting
 Vercel env. Nothing left to write — this is execution, in dependency order.
 

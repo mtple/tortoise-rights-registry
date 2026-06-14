@@ -27,8 +27,10 @@ not legal advice, and not a promise of artist revenue.
 3. **Record on Base.** The **artist's own wallet** sends `registerSong` (paying gas),
    committing the manifest hash, audio hash, permission mode, license-terms hash, the
    Walrus blob ids, and the price on-chain. The app holds no private key.
-4. **Name in ENS.** An admin CLI mints `<slug>.tortmusic.eth` with text records
-   pointing at the manifest, audio blob, and contract.
+4. **Name in ENS.** In the same opt-in flow, the artist's wallet mints
+   `<slug>.tortmusic.eth` (via the registrar's artist-gated `registerByArtist`) with
+   text records pointing at the manifest, audio blob, and contract — so the app stays
+   keyless. An admin CLI (`pnpm mint:name`) is an alternative.
 5. **License.** A model developer approves USDC and calls `purchaseSongLicense`. The
    payment goes directly to the treasury; the buyer's license is recorded on-chain.
 6. **Verify.** Anyone runs `node scripts/verify-song-license.mjs <slug>` from a clean
@@ -37,8 +39,9 @@ not legal advice, and not a promise of artist revenue.
 ## Architecture
 
 - **`contracts/`** — Foundry. `TortoiseRightsRegistry.sol` (EIP-712 consent + USDC
-  licensing) and `TortoiseRegistrar.sol` (an **onlyOwner** Durin registrar — the
-  example registrar is open-mint and is deliberately *not* used).
+  licensing) and `TortoiseRegistrar.sol` (a Durin registrar with an `onlyOwner` admin
+  mint **plus** an artist-gated `registerByArtist` so the web app mints names keylessly
+  — Durin's open-mint example registrar is deliberately *not* used).
 - **`src/`** — a Next.js app (artist opt-in + buyer license page) plus a viem-only
   core library (`src/lib/`): `eip712`, `walrus`, `manifest`, `registry`, `ens`,
   `tortoise`. The `/api` routes are **keyless** (hashing + Walrus mirroring only).
@@ -98,11 +101,12 @@ forge script script/DeployRegistrar.s.sol --rpc-url base --broadcast --verify \
 #  → then: cast send <L2Registry> "addRegistrar(address)" <registrar> --rpc-url base --account tortoise-admin ; cd ..
 
 # C. Opt a song in — from the live app (or pnpm dev): open /song/<slug>, connect the
-#    artist wallet, sign the consent, and send registerSong (the artist pays gas).
-#    Audio + manifest are mirrored to Walrus; the consent hash lands on Base.
+#    artist wallet, sign the consent, send registerSong, then registerByArtist (the
+#    artist pays gas for both). Audio + manifest go to Walrus; consent lands on Base;
+#    AND <slug>.tortmusic.eth is minted in the same flow.
 
-# D. Name it (admin CLI, local — never the hosted app):
-pnpm mint:name <slug>        # mints <slug>.tortmusic.eth with pointer text records
+# D. (Optional) If the in-flow name mint was skipped/failed, an admin can mint it via CLI:
+pnpm mint:name <slug>        # alternative to the in-flow registerByArtist
 
 # E. License it — a buyer opens /song/<slug>, approves USDC, and buys (two steps).
 
