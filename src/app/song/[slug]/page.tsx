@@ -131,6 +131,7 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
       setMsg("Confirm registerSong in your wallet…");
       const a = stored.registerArgs;
       const txHash = await writeContractAsync({
+        chainId: BASE_CHAIN_ID, // pin the write to Base — never submit on whatever chain the wallet is on
         address: RIGHTS_REGISTRY_ADDRESS,
         abi: tortoiseRightsRegistryAbi,
         functionName: "registerSong",
@@ -177,6 +178,7 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
             url: typeof window !== "undefined" ? `${window.location.origin}/song/${slug}` : "",
           });
           nameTx = await writeContractAsync({
+            chainId: BASE_CHAIN_ID, // ENS registrar is on Base — pin the mint there too
             address: TORTOISE_REGISTRAR_ADDRESS,
             abi: tortoiseRegistrarAbi,
             functionName: "registerByArtist",

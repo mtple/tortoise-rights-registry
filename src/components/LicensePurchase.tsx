@@ -72,6 +72,7 @@ export function LicensePurchase({ songId }: { songId: string }) {
       setStep("approving");
       setMsg("Approve USDC in your wallet…");
       const approveTx = await writeContractAsync({
+        chainId: BASE_CHAIN_ID, // pin to Base — never approve on whatever chain the wallet is on
         address: USDC_ADDRESS,
         abi: erc20Abi,
         functionName: "approve",
@@ -83,6 +84,7 @@ export function LicensePurchase({ songId }: { songId: string }) {
       setStep("purchasing");
       setMsg("Confirm the license purchase…");
       const buyTx = await writeContractAsync({
+        chainId: BASE_CHAIN_ID, // pin the purchase to Base
         address: RIGHTS_REGISTRY_ADDRESS,
         abi: tortoiseRightsRegistryAbi,
         functionName: "purchaseSongLicense",
