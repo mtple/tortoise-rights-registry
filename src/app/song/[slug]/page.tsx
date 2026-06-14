@@ -5,7 +5,7 @@ import { useAccount, useSignTypedData, useWriteContract, useChainId, useSwitchCh
 import { base } from "wagmi/chains";
 import { parseUnits, type Hex } from "viem";
 import { Button, Card, StatusBadge, WalletButton } from "@/components/ui";
-import { tortoiseRightsRegistryAbi, RIGHTS_REGISTRY_ADDRESS, tortoiseRegistrarAbi } from "@/lib/registry";
+import { tortoiseRightsRegistryAbi, RIGHTS_REGISTRY_ADDRESS, tortoiseRegistrarAbi, songKey } from "@/lib/registry";
 import { TORTOISE_REGISTRAR_ADDRESS, buildSongTextRecords } from "@/lib/ens";
 import { LicensePurchase } from "@/components/LicensePurchase";
 import { LoadingAnimation } from "@/components/LoadingAnimation";
@@ -29,6 +29,9 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
   const [step, setStep] = useState<Step>("idle");
   const [msg, setMsg] = useState<string>("");
   const [result, setResult] = useState<any>(null);
+  // On-chain registration status (null = unknown/checking). If already registered, we show an
+  // "available for licensing" indicator instead of the opt-in form.
+  const [registered, setRegistered] = useState<{ artist: string; licenseActive: boolean } | null>(null);
 
   // Load song facts for display via the digest phase (also fetches the audio hash).
   useEffect(() => {
@@ -51,6 +54,37 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
       live = false;
     };
   }, [slug]);
+
+  // Read the on-chain record to see if this song already has consent recorded. Drives whether the
+  // card shows the opt-in form or an "available for licensing" indicator. Re-runs after a fresh
+  // opt-in (result) so the UI flips without a reload.
+  const songId: string | undefined = song?.song?.songId;
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      if (!client || !songId || !RIGHTS_REGISTRY_ADDRESS) return;
+      try {
+        const s = (await client.readContract({
+          address: RIGHTS_REGISTRY_ADDRESS,
+          abi: tortoiseRightsRegistryAbi,
+          functionName: "songs",
+          args: [songKey(songId)],
+        })) as readonly [`0x${string}`, number, bigint, boolean, bigint, Hex, Hex, Hex, string, string];
+        if (live) {
+          setRegistered(
+            s[0] === "0x0000000000000000000000000000000000000000"
+              ? null
+              : { artist: s[0], licenseActive: s[3] },
+          );
+        }
+      } catch {
+        /* RPC issue → leave as unknown; opt-in form stays available */
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [client, songId, result]);
 
   async function optIn() {
     if (!isConnected || !address) return;
@@ -179,7 +213,17 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
       </header>
 
       <Card className="space-y-3">
-        <h2 className="font-semibold">Opt this song into AI-training licensing</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-semibold">
+            {registered ? "This song is licensed for AI training" : "Opt this song into AI-training licensing"}
+          </h2>
+          {registered &&
+            (registered.licenseActive ? (
+              <StatusBadge kind="ok">available for licensing</StatusBadge>
+            ) : (
+              <StatusBadge kind="warn">licensing closed</StatusBadge>
+            ))}
+        </div>
         {song ? (
           <dl className="grid grid-cols-[8rem_1fr] gap-y-1 text-sm">
             <dt className="text-ink/60">Artist wallet</dt>
@@ -193,32 +237,45 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
           <p className="text-sm text-ink/60">Loading song…</p>
         )}
 
-        <label className="block text-sm font-medium" htmlFor="price">
-          License price (USDC)
-        </label>
-        <input
-          id="price"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          inputMode="decimal"
-          className="w-32 rounded-lg border border-ink/30 bg-white px-3 py-1.5"
-        />
-
-        {!isConnected ? (
-          <WalletButton />
-        ) : (
-          <div className="space-y-2">
-            <WalletButton />
-            <Button onClick={optIn} disabled={!song || step === "signing" || step === "storing" || step === "registering" || step === "naming"}>
-              {step === "idle" || step === "error" || step === "done" ? "Sign consent & register" : "Working…"}
-            </Button>
-          </div>
-        )}
-
-        {step !== "idle" && step !== "done" && msg && (
-          <p className="text-sm">
-            <StatusBadge kind={step === "error" ? "warn" : "info"}>{step}</StatusBadge> <span className="ml-2">{msg}</span>
+        {registered ? (
+          // Consent already recorded on-chain — no opt-in form. Point to the verify + purchase
+          // panels below.
+          <p className="text-sm text-ink/70">
+            Consent for this song is recorded on Base.{" "}
+            {registered.licenseActive
+              ? "Buy a license below, or verify the full chain yourself."
+              : "The artist has closed new licensing; you can still verify the chain below."}
           </p>
+        ) : (
+          <>
+            <label className="block text-sm font-medium" htmlFor="price">
+              License price (USDC)
+            </label>
+            <input
+              id="price"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              inputMode="decimal"
+              className="w-32 rounded-lg border border-ink/30 bg-white px-3 py-1.5"
+            />
+
+            {!isConnected ? (
+              <WalletButton />
+            ) : (
+              <div className="space-y-2">
+                <WalletButton />
+                <Button onClick={optIn} disabled={!song || step === "signing" || step === "storing" || step === "registering" || step === "naming"}>
+                  {step === "idle" || step === "error" || step === "done" ? "Sign consent & register" : "Working…"}
+                </Button>
+              </div>
+            )}
+
+            {step !== "idle" && step !== "done" && msg && (
+              <p className="text-sm">
+                <StatusBadge kind={step === "error" ? "warn" : "info"}>{step}</StatusBadge> <span className="ml-2">{msg}</span>
+              </p>
+            )}
+          </>
         )}
       </Card>
 
