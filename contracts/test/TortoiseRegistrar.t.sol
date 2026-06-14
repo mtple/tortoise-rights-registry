@@ -2,13 +2,15 @@
 pragma solidity 0.8.28;
 
 import {Test} from "forge-std/Test.sol";
-import {TortoiseRegistrar} from "../src/TortoiseRegistrar.sol";
+import {TortoiseRegistrar, IRightsRegistry} from "../src/TortoiseRegistrar.sol";
 import {IL2Registry} from "../src/IL2Registry.sol";
 import {MockL2Registry} from "./mocks/MockL2Registry.sol";
+import {MockRights} from "./mocks/MockRights.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract TortoiseRegistrarTest is Test {
     MockL2Registry registry;
+    MockRights rights;
     TortoiseRegistrar registrar;
     address owner = makeAddr("owner");
     address artist = makeAddr("artist");
@@ -16,7 +18,8 @@ contract TortoiseRegistrarTest is Test {
 
     function setUp() public {
         registry = new MockL2Registry();
-        registrar = new TortoiseRegistrar(IL2Registry(address(registry)), owner);
+        rights = new MockRights();
+        registrar = new TortoiseRegistrar(IL2Registry(address(registry)), IRightsRegistry(address(rights)), owner);
     }
 
     // Pre-encode setText(subnode, key, value) the way the admin CLI does — records MUST embed the
@@ -68,5 +71,38 @@ contract TortoiseRegistrarTest is Test {
         vm.prank(owner);
         vm.expectRevert(MockL2Registry.AlreadyMinted.selector);
         registrar.register("flux", artist, data); // second time reverts at createSubnode
+    }
+
+    // --- registerByArtist: the registered artist mints their own song's subname (keyless app path) ---
+
+    function test_registerByArtist_happyPath() public {
+        rights.setArtist("flux", artist); // the song was registered by `artist`
+        bytes32 expectedNode = registrar.nodeFor("flux");
+        bytes[] memory data = _records(expectedNode);
+
+        vm.prank(artist);
+        vm.expectEmit(false, true, true, true, address(registrar));
+        emit TortoiseRegistrar.SongNameRegistered("flux", artist, expectedNode);
+        bytes32 node = registrar.registerByArtist("flux", data);
+
+        assertEq(node, expectedNode, "node");
+        assertEq(registry.owners(node), artist, "subname owned by artist");
+        assertEq(registry.texts(expectedNode, "manifest.hash"), "0xabc", "record applied");
+    }
+
+    function test_registerByArtist_revertsForNonArtist() public {
+        rights.setArtist("flux", artist);
+        bytes[] memory data = _records(registrar.nodeFor("flux"));
+        vm.prank(stranger); // not the song's artist
+        vm.expectRevert(TortoiseRegistrar.NotSongArtist.selector);
+        registrar.registerByArtist("flux", data);
+    }
+
+    function test_registerByArtist_revertsForUnregisteredSong() public {
+        // No artist set for "ghost" → songs[key].artist == address(0) → msg.sender can't equal it.
+        bytes[] memory data = _records(registrar.nodeFor("ghost"));
+        vm.prank(artist);
+        vm.expectRevert(TortoiseRegistrar.NotSongArtist.selector);
+        registrar.registerByArtist("ghost", data);
     }
 }

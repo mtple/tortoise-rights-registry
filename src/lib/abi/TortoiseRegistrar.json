@@ -8,6 +8,11 @@
         "internalType": "contract IL2Registry"
       },
       {
+        "name": "rights_",
+        "type": "address",
+        "internalType": "contract IRightsRegistry"
+      },
+      {
         "name": "owner_",
         "type": "address",
         "internalType": "address"
@@ -78,6 +83,30 @@
   },
   {
     "type": "function",
+    "name": "registerByArtist",
+    "inputs": [
+      {
+        "name": "songId",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "records",
+        "type": "bytes[]",
+        "internalType": "bytes[]"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "node",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "registry",
     "inputs": [],
     "outputs": [
@@ -95,6 +124,19 @@
     "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "rights",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IRightsRegistry"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -152,6 +194,11 @@
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "NotSongArtist",
+    "inputs": []
   },
   {
     "type": "error",

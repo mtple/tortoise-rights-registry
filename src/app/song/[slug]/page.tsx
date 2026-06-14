@@ -1,14 +1,15 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { useAccount, useConnect, useSignTypedData, useWriteContract, useChainId, useSwitchChain } from "wagmi";
+import { useAccount, useConnect, useSignTypedData, useWriteContract, useChainId, useSwitchChain, usePublicClient } from "wagmi";
 import { base } from "wagmi/chains";
 import { parseUnits, type Hex } from "viem";
 import { Button, Card, StatusBadge } from "@/components/ui";
-import { tortoiseRightsRegistryAbi, RIGHTS_REGISTRY_ADDRESS } from "@/lib/registry";
+import { tortoiseRightsRegistryAbi, RIGHTS_REGISTRY_ADDRESS, tortoiseRegistrarAbi } from "@/lib/registry";
+import { TORTOISE_REGISTRAR_ADDRESS, buildSongTextRecords } from "@/lib/ens";
 import { LicensePurchase } from "@/components/LicensePurchase";
 
-type Step = "idle" | "signing" | "storing" | "registering" | "done" | "error";
+type Step = "idle" | "signing" | "storing" | "registering" | "naming" | "done" | "error";
 
 export default function SongPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -18,6 +19,7 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
   const { switchChain } = useSwitchChain();
   const { signTypedDataAsync } = useSignTypedData();
   const { writeContractAsync } = useWriteContract();
+  const client = usePublicClient();
 
   const [song, setSong] = useState<any>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -109,9 +111,37 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
           a.signature,
         ],
       });
+      await client?.waitForTransactionReceipt?.({ hash: txHash }).catch(() => {});
+
+      // Mint <slug>.tortmusic.eth in-flow — the artist sends registerByArtist themselves (keyless,
+      // gated on-chain to the song's registered artist). Non-fatal: consent is already recorded,
+      // so a naming failure (e.g. name already minted, or registrar not configured) doesn't undo it.
+      let nameTx: Hex | undefined;
+      let nameErr: string | undefined;
+      if (TORTOISE_REGISTRAR_ADDRESS) {
+        try {
+          setStep("naming");
+          setMsg("Confirm the ENS name mint in your wallet…");
+          const records = buildSongTextRecords(a.songId, {
+            manifestHash: a.manifestHash,
+            walrusBlob: a.walrusManifestBlobId,
+            walrusAudio: a.walrusAudioBlobId,
+            rightsContract: RIGHTS_REGISTRY_ADDRESS,
+            url: typeof window !== "undefined" ? `${window.location.origin}/song/${slug}` : "",
+          });
+          nameTx = await writeContractAsync({
+            address: TORTOISE_REGISTRAR_ADDRESS,
+            abi: tortoiseRegistrarAbi,
+            functionName: "registerByArtist",
+            args: [a.songId, records],
+          });
+        } catch (e) {
+          nameErr = (e as Error).message; // keep going — the consent is what matters
+        }
+      }
 
       setStep("done");
-      setResult({ ...stored, txHash });
+      setResult({ ...stored, txHash, nameTx, nameErr, slug });
       setMsg("");
     } catch (e) {
       setStep("error");
@@ -179,7 +209,7 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
             <p className="text-xs text-ink/60">
               Connected: <span className="font-mono">{address}</span>
             </p>
-            <Button onClick={optIn} disabled={!song || step === "signing" || step === "storing" || step === "registering"}>
+            <Button onClick={optIn} disabled={!song || step === "signing" || step === "storing" || step === "registering" || step === "naming"}>
               {step === "idle" || step === "error" || step === "done" ? "Sign consent & register" : "Working…"}
             </Button>
           </div>
@@ -214,6 +244,19 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
             <li>
               manifest hash: <span className="font-mono">{result.manifestHash}</span>
             </li>
+            {result.nameTx && (
+              <li>
+                ENS name: <span className="font-mono">{result.slug}.tortmusic.eth</span> —{" "}
+                <a className="underline" href={`https://basescan.org/tx/${result.nameTx}`} target="_blank" rel="noreferrer">
+                  mint tx
+                </a>
+              </li>
+            )}
+            {result.nameErr && (
+              <li className="text-amber-700">
+                ENS name not minted (consent is still recorded): {result.nameErr}
+              </li>
+            )}
           </ul>
         </Card>
       )}

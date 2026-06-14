@@ -2,11 +2,26 @@
 // Resolution goes through the Durin CCIP-Read gateway via viem getEnsText/getEnsAddress,
 // with a --rpc-fallback that reads text records directly from the L2Registry on Base. (plan §3, R3)
 
-import { encodeFunctionData, namehash, parseAbi, type Address, type Hex } from "viem";
+import { encodeFunctionData, getAddress, namehash, parseAbi, type Address, type Hex } from "viem";
+
+// Normalize an env address to EIP-55 checksum, tolerating any casing (else viem rejects it).
+function envAddr(...c: (string | undefined)[]): Address {
+  const raw = c.find((v) => v && v.trim());
+  if (!raw) return "" as Address;
+  try {
+    return getAddress(raw.trim());
+  } catch {
+    return raw.trim() as Address;
+  }
+}
 
 export const ENS_PARENT = process.env.ENS_PARENT ?? "tortmusic.eth";
-export const L2_REGISTRY_ADDRESS = (process.env.L2_REGISTRY_ADDRESS ?? "") as Address;
-export const TORTOISE_REGISTRAR_ADDRESS = (process.env.TORTOISE_REGISTRAR_ADDRESS ?? "") as Address;
+export const L2_REGISTRY_ADDRESS = envAddr(process.env.NEXT_PUBLIC_L2_REGISTRY_ADDRESS, process.env.L2_REGISTRY_ADDRESS);
+// Client components (the opt-in page mints in-flow) can only read NEXT_PUBLIC_*; prefer the twin.
+export const TORTOISE_REGISTRAR_ADDRESS = envAddr(
+  process.env.NEXT_PUBLIC_TORTOISE_REGISTRAR_ADDRESS,
+  process.env.TORTOISE_REGISTRAR_ADDRESS,
+);
 
 // Text record keys set at mint (pointers, not claims — C7):
 export const TEXT_KEYS = {
