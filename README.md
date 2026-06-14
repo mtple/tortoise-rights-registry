@@ -151,6 +151,38 @@ licenses, and committed hashes are permanent; because a `blobId` is a content ha
 *same* bytes to any Walrus network restores full verification unchanged. For a durable deployment,
 run an authed mainnet publisher (`WALRUS_PUBLISHER` + `WALRUS_PUBLISHER_AUTH`).
 
+## Arc settlement (Circle Continuity Track)
+
+The license purchase is already a USDC payment, so the registry + payment can run on **[Arc](https://arc.network)** — Circle's USDC-native L1, where USDC *is* the gas token — as the settlement layer, while keeping ENS on Base (Durin's CCIP-Read can't prove a non-rollup L1) and Walrus unchanged. The whole thing is a one-flag switch (`REGISTRY_CHAIN_ID`); the Base mainnet deployment is untouched and stays the default.
+
+```mermaid
+flowchart LR
+  A([Artist wallet<br/>EOA]) -->|EIP-712 sign + registerSong| R[TortoiseRightsRegistry<br/>+ USDC license<br/><b>Arc testnet 5042002</b>]
+  B([Buyer wallet]) -->|approve + purchaseSongLicense<br/>USDC settlement| R
+  R -. consent hash + audio hash .-> W[(Walrus<br/>audio + manifest<br/>content-addressed)]
+  R -. songId / slug .-> E[ENS subname<br/>&lt;slug&gt;.tortmusic.eth<br/><b>Base mainnet</b><br/>via Durin]
+  V{{verify-song-license.mjs<br/>trust nothing}} -->|read songs/licenses + re-verify EIP-712| R
+  V -->|re-fetch + hash| W
+  V -->|resolve name| E
+```
+
+No transactional bridge: the two chains are tied only by the shared `songId` (slug) and the content hashes committed on-chain. ENS minting stays in the admin CLI (`mint-song-name.mjs`) so the demo flow never switches networks mid-action.
+
+**Deployed + verified on Arc testnet (chainId 5042002):**
+
+| What | Address / proof |
+| ---- | --------------- |
+| USDC (Arc system ERC-20, `decimals()=6`) | `0x3600000000000000000000000000000000000000` |
+| `TortoiseRightsRegistry` | [`0xF128B0106f0495dE5407a3E46044fb6b8478F4Ba`](https://testnet.arcscan.app/address/0xF128B0106f0495dE5407a3E46044fb6b8478F4Ba) |
+| opt-in (`registerSong`) | [`0xb1e05804…f0df4`](https://testnet.arcscan.app/tx/0xb1e05804039d4f1d517a11131a3a80afa9364610c18ffcbba076730f7a6f0df4) |
+| license (`purchaseSongLicense`, USDC settlement) | [`0x72f5341e…cf10e4`](https://testnet.arcscan.app/tx/0x72f5341e193f373dfc93e4c9a12482316eccdefe57146f4a950931e285cf10e4) |
+
+`node scripts/verify-song-license.mjs licensetest5 --song-id licensetest5 --buyer <addr>` → **ALL CHECKS PASSED** with the registry + EIP-712 read from Arc and ENS from Base.
+
+**Run it on Arc:** set `REGISTRY_CHAIN_ID=5042002` (+ the `NEXT_PUBLIC_` twin) and the `ARC_*` vars in `.env` (see `.env.example`), deploy with `forge script script/DeployArc.s.sol --rpc-url arc --broadcast --account tortoise-admin --sender <ADMIN>`, then opt in + license as usual. Fund wallets from [faucet.circle.com](https://faucet.circle.com) (USDC is gas on Arc). `pnpm smoke:arc` is the go/no-go gate. Flip back to Base by unsetting `REGISTRY_CHAIN_ID` — no other edits.
+
+> Trade-off, stated plainly: Arc has **no mainnet yet** (≈2026), so adopting it moves the consent record *and* the payment to testnet. The real-USDC **Base mainnet** deployment above remains the production leg; Arc is the purpose-built settlement chain for when it ships mainnet.
+
 ## Honest framing
 
 - **Consent, not provenance.** The signature proves *a named wallet consented to this
