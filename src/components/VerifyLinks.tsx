@@ -5,7 +5,8 @@ import { usePublicClient } from "wagmi";
 import { type Address, type Hex } from "viem";
 import { Card } from "@/components/ui";
 import { tortoiseRightsRegistryAbi, RIGHTS_REGISTRY_ADDRESS, songKey } from "@/lib/registry";
-import { links } from "@/lib/links";
+import { REGISTRY_CHAIN_ID } from "@/lib/client";
+import { links, REGISTRY_CHAIN_NAME, REGISTRY_EXPLORER_NAME } from "@/lib/links";
 
 type Rec = {
   artist: Address;
@@ -20,7 +21,7 @@ const ZERO = "0x0000000000000000000000000000000000000000";
 // (not just right after opt-in). Links to every place the claim can be independently checked:
 // Walruscan / the raw manifest + audio on Walrus, the ENS name, and Basescan.
 export function VerifyLinks({ songId, slug }: { songId: string; slug: string }) {
-  const client = usePublicClient();
+  const client = usePublicClient({ chainId: REGISTRY_CHAIN_ID }); // read the registry on its own chain
   const [rec, setRec] = useState<Rec | null>(null);
 
   useEffect(() => {
@@ -71,8 +72,8 @@ export function VerifyLinks({ songId, slug }: { songId: string; slug: string }) 
         <Row label="ENS name">
           <A href={links.ensName(slug)}>{slug}.tortmusic.eth</A>
         </Row>
-        <Row label="Consent + price (Base)">
-          <A href={links.baseAddress(RIGHTS_REGISTRY_ADDRESS)}>contract on Basescan</A>
+        <Row label={`Consent + price (${REGISTRY_CHAIN_NAME})`}>
+          <A href={links.registryAddress(RIGHTS_REGISTRY_ADDRESS)}>contract on {REGISTRY_EXPLORER_NAME}</A>
         </Row>
         <Row label="Manifest (Walrus)">
           <A href={links.walrusBlobRaw(rec.manifestBlob)}>JSON</A>
@@ -85,7 +86,7 @@ export function VerifyLinks({ songId, slug }: { songId: string; slug: string }) 
           <span className="font-mono text-ink/50">{rec.audioBlob}</span>
         </Row>
         <Row label="Artist wallet">
-          <A href={links.baseAddress(rec.artist)}>{rec.artist}</A>
+          <A href={links.registryAddress(rec.artist)}>{rec.artist}</A>
         </Row>
         <Row label="Manifest hash (on-chain commitment)">
           <span className="break-all font-mono text-ink/50">{rec.manifestHash}</span>

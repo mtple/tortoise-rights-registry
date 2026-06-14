@@ -25,9 +25,14 @@ depth = 32
 [rpc_endpoints]
 base = "${BASE_RPC_URL}"
 mainnet = "${L1_RPC_URL}"
+# Arc testnet (chainId 5042002) — registry + USDC payment chain. `--rpc-url arc`.
+arc = "${ARC_RPC_URL}"
 
 [etherscan]
 # For `forge verify-contract` after deploy (Basescan via the unified Etherscan v2 API).
 base = { key = "${ETHERSCAN_API_KEY}", chain = 8453 }
+# Arc uses ArcScan (Blockscout-style), not Etherscan. To verify on Arc, append to the forge command:
+#   --verifier blockscout --verifier-url https://testnet.arcscan.app/api
+# (no API key needed). Deploy success is what gates the smoke test; verify can be done after.
 
 # See https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

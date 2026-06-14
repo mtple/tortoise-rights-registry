@@ -15,7 +15,7 @@ import { loadSongBySlug, songFromPaste, fetchAudioBytes, ipfsCidFromUrl } from "
 import { hashBytes, buildSongManifest } from "@/lib/manifest";
 import { putBlob, PUBLIC_PUBLISHER_CAP } from "@/lib/walrus";
 import { RIGHTS_REGISTRY_ADDRESS, verifyConsent } from "@/lib/registry";
-import { basePublicClient, BASE_CHAIN_ID } from "@/lib/client";
+import { registryPublicClient, REGISTRY_CHAIN_ID } from "@/lib/client";
 import { consentTypes, type ConsentMessage } from "@/lib/eip712";
 
 // Walrus PUTs are slow (~7-9s each); the store phase does fetch-audio + 2 PUTs (~18s total),
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
   };
 
   const typedData = {
-    domain: { name: "TortoiseRightsRegistry", version: "1", chainId: BASE_CHAIN_ID, verifyingContract: RIGHTS_REGISTRY_ADDRESS },
+    domain: { name: "TortoiseRightsRegistry", version: "1", chainId: REGISTRY_CHAIN_ID, verifyingContract: RIGHTS_REGISTRY_ADDRESS },
     types: consentTypes,
     primaryType: "Consent" as const,
     message: { ...message, timestamp: timestamp }, // wallet wants a JSON-friendly value
@@ -123,7 +123,7 @@ export async function POST(req: Request) {
 
   let ok = false;
   try {
-    ok = await verifyConsent(basePublicClient(), RIGHTS_REGISTRY_ADDRESS, message, signature);
+    ok = await verifyConsent(registryPublicClient(), RIGHTS_REGISTRY_ADDRESS, message, signature);
   } catch (e) {
     return bad(`signature verification error: ${(e as Error).message}`, 502);
   }
