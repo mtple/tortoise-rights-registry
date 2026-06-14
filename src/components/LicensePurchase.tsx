@@ -16,7 +16,11 @@ export function LicensePurchase({ songId }: { songId: string }) {
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
-  const client = usePublicClient();
+  // Pin the read client to the REGISTRY chain (not the wallet's current chain). The registry +
+  // licenses live there, and a buyer may still be on Base when REGISTRY_CHAIN_ID is Arc — awaiting
+  // switchChain doesn't rebind a plain usePublicClient() captured in the async handler, so reads
+  // would hit the Arc address on Base and abort. A chainId-pinned client always reads/​waits on Arc.
+  const client = usePublicClient({ chainId: REGISTRY_CHAIN_ID });
 
   const [rec, setRec] = useState<Rec | null>(null);
   const [licensed, setLicensed] = useState<boolean | null>(null);

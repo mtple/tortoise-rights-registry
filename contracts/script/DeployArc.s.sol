@@ -34,8 +34,12 @@ contract DeployArc is Script {
 
         // ARC_USDC_ADDRESS preferred; default to the known Arc system USDC if unset.
         address usdc = vm.envOr("ARC_USDC_ADDRESS", ARC_USDC);
-        // ARC_TREASURY_ADDRESS preferred; fall back to the shared TREASURY_ADDRESS.
-        address treasury = vm.envOr("ARC_TREASURY_ADDRESS", vm.envAddress("TREASURY_ADDRESS"));
+        // ARC_TREASURY_ADDRESS preferred; fall back to the shared TREASURY_ADDRESS. NOTE: resolve in
+        // two steps — `vm.envOr("ARC_TREASURY_ADDRESS", vm.envAddress("TREASURY_ADDRESS"))` would
+        // eagerly evaluate the fallback and REVERT when TREASURY_ADDRESS is blank (the documented
+        // Arc-only setup sets ARC_TREASURY_ADDRESS and leaves TREASURY_ADDRESS empty).
+        address treasury = vm.envOr("ARC_TREASURY_ADDRESS", address(0));
+        if (treasury == address(0)) treasury = vm.envOr("TREASURY_ADDRESS", address(0));
         address owner = vm.envOr("OWNER_ADDRESS", address(0));
 
         require(usdc != address(0) && treasury != address(0), "DeployArc: zero usdc/treasury");

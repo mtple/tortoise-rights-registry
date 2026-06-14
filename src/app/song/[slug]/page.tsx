@@ -21,7 +21,9 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
   const { switchChain } = useSwitchChain();
   const { signTypedDataAsync } = useSignTypedData();
   const { writeContractAsync } = useWriteContract();
-  const client = usePublicClient();
+  // Pinned to the registry chain: the registered-song read AND the registerSong receipt wait both
+  // target the registry chain (Arc when configured), regardless of the wallet's current chain.
+  const client = usePublicClient({ chainId: REGISTRY_CHAIN_ID });
 
   const [song, setSong] = useState<any>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);

@@ -5,6 +5,7 @@ import { usePublicClient } from "wagmi";
 import { type Address, type Hex } from "viem";
 import { Card } from "@/components/ui";
 import { tortoiseRightsRegistryAbi, RIGHTS_REGISTRY_ADDRESS, songKey } from "@/lib/registry";
+import { REGISTRY_CHAIN_ID } from "@/lib/client";
 import { links, REGISTRY_CHAIN_NAME, REGISTRY_EXPLORER_NAME } from "@/lib/links";
 
 type Rec = {
@@ -20,7 +21,7 @@ const ZERO = "0x0000000000000000000000000000000000000000";
 // (not just right after opt-in). Links to every place the claim can be independently checked:
 // Walruscan / the raw manifest + audio on Walrus, the ENS name, and Basescan.
 export function VerifyLinks({ songId, slug }: { songId: string; slug: string }) {
-  const client = usePublicClient();
+  const client = usePublicClient({ chainId: REGISTRY_CHAIN_ID }); // read the registry on its own chain
   const [rec, setRec] = useState<Rec | null>(null);
 
   useEffect(() => {

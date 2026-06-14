@@ -22,7 +22,7 @@ import {
   parseAbi,
   getAddress,
 } from "viem";
-import { base } from "viem/chains";
+import { base, arcTestnet } from "viem/chains";
 import { loadAdminAccount } from "./lib/keystore.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -51,8 +51,7 @@ if (!label) {
   process.exit(64);
 }
 
-const REGISTRAR = need("TORTOISE_REGISTRAR_ADDRESS");
-const REGISTRY = need("RIGHTS_REGISTRY_ADDRESS");
+const REGISTRAR = need("TORTOISE_REGISTRAR_ADDRESS"); // ENS registrar — always Base (Durin)
 const ENS_PARENT = process.env.ENS_PARENT || "tortmusic.eth";
 function need(n) {
   if (!process.env[n]) {
@@ -62,10 +61,23 @@ function need(n) {
   return process.env[n];
 }
 
+// Two chains: the song record is READ from the registry chain (Arc when REGISTRY_CHAIN_ID=5042002,
+// else Base) — using the Arc registry address there — while the ENS name is MINTED on Base. Mixing
+// these up was the bug: reading the Base registry on an Arc deployment reports the song unregistered.
+const ON_ARC = Number(process.env.REGISTRY_CHAIN_ID || base.id) === arcTestnet.id;
+const REGISTRY = ON_ARC
+  ? (process.env.ARC_RIGHTS_REGISTRY_ADDRESS || need("RIGHTS_REGISTRY_ADDRESS"))
+  : need("RIGHTS_REGISTRY_ADDRESS");
+
 // Signing account from the forge keystore (prompts for password) — no raw key in env. (user policy)
 const account = await loadAdminAccount();
+// Wallet + registrar reads/writes are on BASE (ENS lives on Base regardless of the registry chain).
 const wallet = createWalletClient({ account, chain: base, transport: http(process.env.BASE_RPC_URL || undefined) });
 const pub = createPublicClient({ chain: base, transport: http(process.env.BASE_RPC_URL || undefined) });
+// Registry read uses the registry chain's client.
+const registryPub = ON_ARC
+  ? createPublicClient({ chain: arcTestnet, transport: http(process.env.ARC_RPC_URL || undefined) })
+  : pub;
 
 const registryAbi = JSON.parse(readFileSync(join(ROOT, "src/lib/abi/TortoiseRightsRegistry.json"), "utf8"));
 const resolverAbi = parseAbi(["function setText(bytes32 node, string key, string value)"]);
@@ -74,10 +86,11 @@ const registrarAbi = parseAbi(["function register(string label, address owner, b
 const songKey = (id) => keccak256(toBytes(id));
 
 async function main() {
-  console.log(`\nMinting ${label}.${ENS_PARENT} (songId "${songId}") from admin ${account.address}\n`);
+  console.log(`\nMinting ${label}.${ENS_PARENT} (songId "${songId}") from admin ${account.address}`);
+  console.log(`  registry ${REGISTRY} on ${ON_ARC ? "Arc Testnet" : "Base"}; minting ENS on Base\n`);
 
-  // 1) Read the song record to source the pointer values.
-  const s = await pub.readContract({ address: getAddress(REGISTRY), abi: registryAbi, functionName: "songs", args: [songKey(songId)] });
+  // 1) Read the song record (from the REGISTRY chain) to source the pointer values.
+  const s = await registryPub.readContract({ address: getAddress(REGISTRY), abi: registryAbi, functionName: "songs", args: [songKey(songId)] });
   const rec = { artist: s[0], manifestHash: s[5], walrusManifestBlobId: s[8], walrusAudioBlobId: s[9] };
   if (rec.artist === "0x0000000000000000000000000000000000000000") {
     console.error(`Song "${songId}" is not registered on-chain — register it before minting its name.`);
