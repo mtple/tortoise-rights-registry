@@ -71,13 +71,28 @@ function shortAddr(a: string) {
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
 
+// Persistent wallet status — the connected address plus a disconnect control. Lives in the global
+// header (layout) so a connected wallet can always be disconnected, no matter the page or whether a
+// song is registered/licensed (states that otherwise hide the in-form wallet control). Renders
+// nothing when no wallet is connected.
+export function WalletStatus({ className = "" }: { className?: string }) {
+  const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
+  if (!isConnected || !address) return null;
+  return (
+    <div className={"flex items-center gap-3 " + className}>
+      <span className="font-mono text-xs text-ink/70">{shortAddr(address)}</span>
+      <Button onClick={() => disconnect()}>Disconnect wallet</Button>
+    </div>
+  );
+}
+
 // Single wallet control used everywhere: "Connect wallet" → a Tortoise-styled modal of the
 // browser wallets wagmi discovered (injected/EIP-6963); once connected, shows the address + a
 // "Disconnect" button. No Base Account option (intentionally removed from this app).
 export function WalletButton({ className = "" }: { className?: string }) {
   const { address, isConnected } = useAccount();
   const { connectors, connect, isPending } = useConnect();
-  const { disconnect } = useDisconnect();
   const [open, setOpen] = useState(false);
 
   // De-dupe connectors by name (EIP-6963 can surface the generic "Injected" alongside a named
@@ -90,12 +105,7 @@ export function WalletButton({ className = "" }: { className?: string }) {
   });
 
   if (isConnected && address) {
-    return (
-      <div className={"flex items-center gap-3 " + className}>
-        <span className="font-mono text-xs text-ink/70">{shortAddr(address)}</span>
-        <Button onClick={() => disconnect()}>Disconnect wallet</Button>
-      </div>
-    );
+    return <WalletStatus className={className} />;
   }
 
   return (

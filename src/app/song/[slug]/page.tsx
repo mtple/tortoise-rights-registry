@@ -259,12 +259,9 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
             {!isConnected ? (
               <WalletButton />
             ) : (
-              <div className="space-y-2">
-                <WalletButton />
-                <Button onClick={optIn} loading={working} disabled={!song}>
-                  {working ? "Working…" : "Sign consent & register"}
-                </Button>
-              </div>
+              <Button onClick={optIn} loading={working} disabled={!song}>
+                {working ? "Working…" : "Sign consent & register"}
+              </Button>
             )}
 
             {step !== "idle" && step !== "done" && msg && (

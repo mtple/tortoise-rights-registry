@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
+import { WalletStatus } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "Tortoise Rights Registry",
@@ -13,7 +14,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <Providers>
-          <div className="mx-auto min-h-screen max-w-3xl px-5 py-8">{children}</div>
+          <div className="mx-auto min-h-screen max-w-3xl px-5 py-8">
+            {/* Persistent wallet control: a connected wallet can always disconnect from here,
+                even on pages/states where no in-form wallet button is shown. Hidden when no
+                wallet is connected. */}
+            <WalletStatus className="mb-6 justify-end" />
+            {children}
+          </div>
         </Providers>
       </body>
     </html>
