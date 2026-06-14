@@ -41,8 +41,8 @@ contract TortoiseRightsRegistry is EIP712, Ownable {
         string walrusAudioBlobId; // mirrored audio blob
     }
 
-    /// @notice USDC used for license payments — set at construction to the configured chain's USDC
-    ///         (Base mainnet 0x8335..2913, or Arc testnet 0x3600..0000; both 6 decimals).
+    /// @notice USDC used for license payments — set at construction to the chain's USDC
+    ///         (Arc testnet 0x3600..0000, 6 decimals).
     IERC20 public immutable USDC;
     /// @notice Receives license payments directly; immutable by design (C9).
     address public immutable treasury;
@@ -88,7 +88,7 @@ contract TortoiseRightsRegistry is EIP712, Ownable {
     error PriceTooHigh(); // live priceUsdc exceeds the buyer's maxPrice (C5 price slippage)
     error AlreadyLicensed(); // same buyer, repeat purchase (C13)
 
-    /// @param usdc     USDC token address for the deploy chain (Base 0x8335..2913 / Arc 0x3600..0000).
+    /// @param usdc     USDC token address (Arc testnet 0x3600..0000).
     /// @param treasury_ Wallet that receives all license payments. Triple-check (C9): immutable.
     /// @param owner_   Contract owner (admin). No control over consent or funds.
     constructor(IERC20 usdc, address treasury_, address owner_)
