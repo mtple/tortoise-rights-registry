@@ -125,9 +125,11 @@ keccak256(LICENSE_TERMS.md)` and that the manifest price matches on-chain, and r
 | USDC (Circle) | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
 | Durin L2RegistryFactory | `0xDddddDdDDD8Aa1f237b4fa0669cb46892346d22d` |
 | Durin L1 Resolver (Ethereum mainnet) | `0x8A968aB9eb8C084FBC44c531058Fc9ef945c3D61` |
-| `TortoiseRightsRegistry` | _set after deploy_ |
-| `TortoiseRegistrar` | _set after deploy_ |
-| `tortmusic.eth` L2Registry | _set after durin.dev deploy_ |
+| `TortoiseRightsRegistry` | [`0xA0bd2b9f2d9554cA3AAeD618E420Aac816d80bbe`](https://basescan.org/address/0xA0bd2b9f2d9554cA3AAeD618E420Aac816d80bbe) |
+| `TortoiseRegistrar` (artist-gated mint) | [`0x7640eB413A5AD4aa1D28485db09a658629e30601`](https://basescan.org/address/0x7640eB413A5AD4aa1D28485db09a658629e30601) |
+| `tortmusic.eth` L2Registry (Durin) | [`0x8aB7bB948298826D7495656290dFD241a544A680`](https://basescan.org/address/0x8aB7bB948298826D7495656290dFD241a544A680) |
+
+Live example: [`licensetest5.tortmusic.eth`](https://tortoise-rights-registry.vercel.app/song/licensetest5) — opted in, named, and licensed; verify it with `node scripts/verify-song-license.mjs licensetest5`.
 
 ## A note on Walrus (testnet blobs)
 
