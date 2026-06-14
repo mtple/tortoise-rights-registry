@@ -123,6 +123,8 @@ export function LicensePurchase({ songId }: { songId: string }) {
   if (!rec) return null;
   if (rec.artist === "0x0000000000000000000000000000000000000000") return null; // not registered → no purchase UI
 
+  const busy = step === "approving" || step === "purchasing" || step === "receipt";
+
   return (
     <Card className="space-y-3">
       <div className="flex items-center justify-between">
@@ -146,8 +148,8 @@ export function LicensePurchase({ songId }: { songId: string }) {
       ) : !isConnected ? (
         <WalletButton />
       ) : rec.licenseActive ? (
-        <Button onClick={buy} disabled={step === "approving" || step === "purchasing" || step === "receipt"}>
-          {step === "idle" || step === "error" || step === "done" ? "License with USDC (2 steps)" : "Working…"}
+        <Button onClick={buy} loading={busy}>
+          {busy ? "Working…" : "License with USDC (2 steps)"}
         </Button>
       ) : null}
 

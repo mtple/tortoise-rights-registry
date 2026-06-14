@@ -3,20 +3,49 @@
 import { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { useAccount, useConnect, useDisconnect, type Connector } from "wagmi";
 
+// Small inline tortoise spinner — the same brand mark as the (former) full-page loader, sized to
+// sit next to a label. Rendered as a CSS mask filled with currentColor so it picks up the host's
+// text colour (cream on ink buttons) and stays visible on any background. Spins via the `spin`
+// keyframe in globals.css.
+export function Spinner({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={"inline-block shrink-0 " + className}
+      style={{
+        backgroundColor: "currentColor",
+        WebkitMaskImage: "url(/transparent-icon.png)",
+        maskImage: "url(/transparent-icon.png)",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        animation: "spin 1.5s linear infinite",
+      }}
+    />
+  );
+}
+
 export function Button({
   children,
   className = "",
+  loading = false,
+  disabled,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode; loading?: boolean }) {
   return (
     <button
       className={
-        "rounded-lg bg-ink px-4 py-2 font-medium text-cream transition disabled:cursor-not-allowed " +
+        "inline-flex items-center justify-center gap-2 rounded-lg bg-ink px-4 py-2 font-medium text-cream transition disabled:cursor-not-allowed " +
         "disabled:opacity-50 hover:opacity-90 " +
         className
       }
+      disabled={disabled || loading}
       {...props}
     >
+      {loading && <Spinner />}
       {children}
     </button>
   );
@@ -42,13 +71,28 @@ function shortAddr(a: string) {
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
 
+// Persistent wallet status — the connected address plus a disconnect control. Lives in the global
+// header (layout) so a connected wallet can always be disconnected, no matter the page or whether a
+// song is registered/licensed (states that otherwise hide the in-form wallet control). Renders
+// nothing when no wallet is connected.
+export function WalletStatus({ className = "" }: { className?: string }) {
+  const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
+  if (!isConnected || !address) return null;
+  return (
+    <div className={"flex items-center gap-3 " + className}>
+      <span className="font-mono text-xs text-ink/70">{shortAddr(address)}</span>
+      <Button onClick={() => disconnect()}>Disconnect wallet</Button>
+    </div>
+  );
+}
+
 // Single wallet control used everywhere: "Connect wallet" → a Tortoise-styled modal of the
 // browser wallets wagmi discovered (injected/EIP-6963); once connected, shows the address + a
 // "Disconnect" button. No Base Account option (intentionally removed from this app).
 export function WalletButton({ className = "" }: { className?: string }) {
   const { address, isConnected } = useAccount();
   const { connectors, connect, isPending } = useConnect();
-  const { disconnect } = useDisconnect();
   const [open, setOpen] = useState(false);
 
   // De-dupe connectors by name (EIP-6963 can surface the generic "Injected" alongside a named
@@ -61,12 +105,7 @@ export function WalletButton({ className = "" }: { className?: string }) {
   });
 
   if (isConnected && address) {
-    return (
-      <div className={"flex items-center gap-3 " + className}>
-        <span className="font-mono text-xs text-ink/70">{shortAddr(address)}</span>
-        <Button onClick={() => disconnect()}>Disconnect wallet</Button>
-      </div>
-    );
+    return <WalletStatus className={className} />;
   }
 
   return (
