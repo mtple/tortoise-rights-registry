@@ -1,7 +1,7 @@
 // TortoiseRightsRegistry — ABI + typed read/write helpers.
 // The contract is authoritative for live state (licenseActive, price). (plan §4, C7)
 
-import { keccak256, toBytes, type Address, type Hex } from "viem";
+import { keccak256, toBytes, getAddress, type Address, type Hex } from "viem";
 import rightsRegistryAbi from "./abi/TortoiseRightsRegistry.json" with { type: "json" };
 import registrarAbi from "./abi/TortoiseRegistrar.json" with { type: "json" };
 import { buildConsentTypedData, type ConsentMessage } from "./eip712";
@@ -13,16 +13,31 @@ type Client = ReturnType<typeof basePublicClient>;
 export const tortoiseRightsRegistryAbi = rightsRegistryAbi;
 export const tortoiseRegistrarAbi = registrarAbi;
 
+// Normalize an env-supplied address to EIP-55 checksum, tolerating any casing (a mis-cased Vercel
+// env var is otherwise rejected by viem with "Address must match its checksum counterpart").
+// Returns "" if unset/blank so the routes can show a clear "not configured" message.
+function envAddress(...candidates: (string | undefined)[]): Address {
+  const raw = candidates.find((v) => v && v.trim());
+  if (!raw) return "" as Address;
+  try {
+    return getAddress(raw.trim());
+  } catch {
+    return raw.trim() as Address; // let the eventual viem call surface a precise error
+  }
+}
+
 // Browser (client components) can ONLY read NEXT_PUBLIC_* env. This module is imported by both the
 // keyless API routes (server) and the song/purchase pages (client), so we prefer the NEXT_PUBLIC_
-// twin and fall back to the bare name for server/scripts. Vercel must set NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS
-// or the live app will call viem with an empty address. (review fix: client env exposure)
-export const RIGHTS_REGISTRY_ADDRESS = (process.env.NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS ??
-  process.env.RIGHTS_REGISTRY_ADDRESS ??
-  "") as Address;
-export const USDC_ADDRESS = (process.env.NEXT_PUBLIC_USDC_ADDRESS ??
-  process.env.USDC_ADDRESS ??
-  "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913") as Address; // Base mainnet, decimals()=6 (verified)
+// twin and fall back to the bare name for server/scripts. Vercel must set NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS.
+export const RIGHTS_REGISTRY_ADDRESS = envAddress(
+  process.env.NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS,
+  process.env.RIGHTS_REGISTRY_ADDRESS,
+);
+export const USDC_ADDRESS = envAddress(
+  process.env.NEXT_PUBLIC_USDC_ADDRESS,
+  process.env.USDC_ADDRESS,
+  "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // Base mainnet, decimals()=6 (verified)
+);
 
 /// songKey = keccak256(bytes(songId)) — must match the contract's keccak256(bytes(songId)).
 export function songKey(songId: string): Hex {
