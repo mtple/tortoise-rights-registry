@@ -160,7 +160,14 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
       // (scripts/mint-song-name.mjs), keeping the demo flow single-network per action. (plan: two-chain coordination)
       let nameTx: Hex | undefined;
       let nameErr: string | undefined;
-      const inflowMint = REGISTRY_CHAIN_ID === BASE_CHAIN_ID && !!TORTOISE_REGISTRAR_ADDRESS;
+      let nameSkip: string | undefined; // why the in-flow mint didn't run (so it's never invisible)
+      const onBase = REGISTRY_CHAIN_ID === BASE_CHAIN_ID;
+      const inflowMint = onBase && !!TORTOISE_REGISTRAR_ADDRESS;
+      if (!inflowMint) {
+        nameSkip = !onBase
+          ? `registry is on ${REGISTRY_CHAIN_NAME}; ENS (Base) is minted by the admin CLI (mint-song-name.mjs)`
+          : "NEXT_PUBLIC_TORTOISE_REGISTRAR_ADDRESS not configured in this build — name not minted in-flow";
+      }
       if (inflowMint) {
         try {
           setStep("naming");
@@ -184,7 +191,7 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
       }
 
       setStep("done");
-      setResult({ ...stored, txHash, nameTx, nameErr, slug });
+      setResult({ ...stored, txHash, nameTx, nameErr, nameSkip, slug });
       setMsg("");
     } catch (e) {
       setStep("error");
@@ -300,8 +307,8 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
             {result.nameErr && (
               <li className="text-amber-700">ENS name not minted (consent is still recorded): {result.nameErr}</li>
             )}
-            {!result.nameTx && !result.nameErr && (
-              <li className="text-ink/60">ENS name on Base is minted separately by Tortoise (backend) — consent + payment are on {REGISTRY_CHAIN_NAME}.</li>
+            {!result.nameTx && !result.nameErr && result.nameSkip && (
+              <li className="text-amber-700">ENS name not minted in-flow — {result.nameSkip}</li>
             )}
           </ul>
         </Card>
