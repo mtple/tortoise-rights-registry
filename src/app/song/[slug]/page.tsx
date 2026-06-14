@@ -9,6 +9,8 @@ import { tortoiseRightsRegistryAbi, RIGHTS_REGISTRY_ADDRESS, tortoiseRegistrarAb
 import { TORTOISE_REGISTRAR_ADDRESS, buildSongTextRecords } from "@/lib/ens";
 import { LicensePurchase } from "@/components/LicensePurchase";
 import { LoadingAnimation } from "@/components/LoadingAnimation";
+import { VerifyLinks } from "@/components/VerifyLinks";
+import { links } from "@/lib/links";
 
 type Step = "idle" | "signing" | "storing" | "registering" | "naming" | "done" | "error";
 
@@ -232,41 +234,29 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
       {step === "done" && result && (
         <Card className="space-y-2">
           <p>
-            <StatusBadge kind="ok">registered</StatusBadge>
+            <StatusBadge kind="ok">registered</StatusBadge>{" "}
+            {result.nameTx && <StatusBadge kind="ok">name minted</StatusBadge>}
           </p>
-          <p className="text-sm">Consent recorded on Base. Audio + manifest stored on Walrus.</p>
+          <p className="text-sm">Consent recorded on Base, audio + manifest stored on Walrus. Details below.</p>
           <ul className="space-y-1 text-xs">
             <li>
-              tx:{" "}
-              <a className="underline" href={`https://basescan.org/tx/${result.txHash}`} target="_blank" rel="noreferrer">
-                {result.txHash}
-              </a>
-            </li>
-            <li>
-              manifest blob: <span className="font-mono">{result.manifestBlobId}</span>
-            </li>
-            <li>
-              audio blob: <span className="font-mono">{result.audioBlobId}</span>
-            </li>
-            <li>
-              manifest hash: <span className="font-mono">{result.manifestHash}</span>
+              registerSong tx: <a className="underline" href={links.baseTx(result.txHash)} target="_blank" rel="noreferrer">{result.txHash.slice(0, 18)}…</a>
             </li>
             {result.nameTx && (
               <li>
-                ENS name: <span className="font-mono">{result.slug}.tortmusic.eth</span> —{" "}
-                <a className="underline" href={`https://basescan.org/tx/${result.nameTx}`} target="_blank" rel="noreferrer">
-                  mint tx
-                </a>
+                name mint tx: <a className="underline" href={links.baseTx(result.nameTx)} target="_blank" rel="noreferrer">{result.nameTx.slice(0, 18)}…</a>
               </li>
             )}
             {result.nameErr && (
-              <li className="text-amber-700">
-                ENS name not minted (consent is still recorded): {result.nameErr}
-              </li>
+              <li className="text-amber-700">ENS name not minted (consent is still recorded): {result.nameErr}</li>
             )}
           </ul>
         </Card>
       )}
+
+      {/* Persistent verify panel — shows for ANY registered song on page load (reads on-chain),
+          linking Walruscan / ENS / Basescan / the raw manifest + audio. */}
+      {song?.song?.songId && <VerifyLinks songId={song.song.songId} slug={song.song.slug || slug} />}
 
       {/* Buyer-facing license purchase — self-hides until the song is registered on-chain.
           songId is the canonical on-chain key (the slug for Tortoise songs) — same value the
