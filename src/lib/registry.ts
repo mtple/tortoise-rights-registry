@@ -32,10 +32,18 @@ function envAddress(...candidates: (string | undefined)[]): Address {
 // Browser (client components) can ONLY read NEXT_PUBLIC_* env. This module is imported by both the
 // keyless API routes (server) and the song/purchase pages (client), so we prefer the NEXT_PUBLIC_
 // twin and fall back to the bare name for server/scripts. Vercel must set NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS.
-export const RIGHTS_REGISTRY_ADDRESS = envAddress(
-  process.env.NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS,
-  process.env.RIGHTS_REGISTRY_ADDRESS,
-);
+//
+// Chain-keyed like USDC: on Arc, prefer ARC_RIGHTS_REGISTRY_ADDRESS so the Base deployment address
+// stays untouched in .env — flipping REGISTRY_CHAIN_ID is all it takes to switch back to Base.
+export const RIGHTS_REGISTRY_ADDRESS =
+  REGISTRY_CHAIN_ID === ARC_CHAIN_ID
+    ? envAddress(
+        process.env.NEXT_PUBLIC_ARC_RIGHTS_REGISTRY_ADDRESS,
+        process.env.ARC_RIGHTS_REGISTRY_ADDRESS,
+        process.env.NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS,
+        process.env.RIGHTS_REGISTRY_ADDRESS,
+      )
+    : envAddress(process.env.NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS, process.env.RIGHTS_REGISTRY_ADDRESS);
 // USDC used for license payments — on the registry chain (both decimals()=6). Pick the address for
 // the configured chain: on Arc the system USDC ERC-20 interface (0x3600…0000, confirmed on-chain),
 // on Base the canonical USDC. Keying off REGISTRY_CHAIN_ID (not blind env precedence) means a Base

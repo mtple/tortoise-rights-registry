@@ -54,12 +54,6 @@ if (!slug) {
 }
 
 // ---- config ----
-const REGISTRY = need("RIGHTS_REGISTRY_ADDRESS");
-const L2_REGISTRY = process.env.L2_REGISTRY_ADDRESS || "";
-const ENS_PARENT = process.env.ENS_PARENT || "tortmusic.eth";
-const AGGREGATORS = (process.env.WALRUS_AGGREGATOR || "https://aggregator.walrus-testnet.walrus.space")
-  .split(",").map((s) => s.trim()).filter(Boolean);
-
 // Two chains: the REGISTRY + payment + EIP-712 consent live on the registry chain (Arc testnet when
 // REGISTRY_CHAIN_ID=5042002, else Base); ENS subnames are always on Base (read via the L1 Universal
 // Resolver / CCIP, or directly off the L2Registry with --rpc-fallback). So `registryClient` reads
@@ -67,6 +61,20 @@ const AGGREGATORS = (process.env.WALRUS_AGGREGATOR || "https://aggregator.walrus
 const REGISTRY_CHAIN_ID = Number(process.env.REGISTRY_CHAIN_ID || base.id);
 const ON_ARC = REGISTRY_CHAIN_ID === arcTestnet.id;
 const registryChain = ON_ARC ? arcTestnet : base;
+
+// Registry address + deploy block are chain-keyed: on Arc, prefer ARC_* so the Base values in .env
+// stay untouched (flip back to Base by just changing REGISTRY_CHAIN_ID). Falls back to the bare vars.
+const REGISTRY = ON_ARC
+  ? (process.env.ARC_RIGHTS_REGISTRY_ADDRESS || need("RIGHTS_REGISTRY_ADDRESS"))
+  : need("RIGHTS_REGISTRY_ADDRESS");
+const DEPLOY_BLOCK = ON_ARC
+  ? (process.env.ARC_REGISTRY_DEPLOY_BLOCK || process.env.REGISTRY_DEPLOY_BLOCK)
+  : process.env.REGISTRY_DEPLOY_BLOCK;
+const L2_REGISTRY = process.env.L2_REGISTRY_ADDRESS || "";
+const ENS_PARENT = process.env.ENS_PARENT || "tortmusic.eth";
+const AGGREGATORS = (process.env.WALRUS_AGGREGATOR || "https://aggregator.walrus-testnet.walrus.space")
+  .split(",").map((s) => s.trim()).filter(Boolean);
+
 const baseClient = createPublicClient({ chain: base, transport: http(process.env.BASE_RPC_URL || undefined) });
 const l1Client = createPublicClient({ chain: mainnet, transport: http(process.env.L1_RPC_URL || undefined) });
 const registryClient = ON_ARC
@@ -249,7 +257,7 @@ async function main() {
     // registry's deploy block when known (REGISTRY_DEPLOY_BLOCK), else a bounded recent window.
     try {
       const latest = await registryClient.getBlockNumber();
-      const deployBlock = process.env.REGISTRY_DEPLOY_BLOCK ? BigInt(process.env.REGISTRY_DEPLOY_BLOCK) : undefined;
+      const deployBlock = DEPLOY_BLOCK ? BigInt(DEPLOY_BLOCK) : undefined;
       const fromBlock = deployBlock ?? (latest > 9000n ? latest - 9000n : 0n);
       const logs = await registryClient.getContractEvents({
         address: getAddress(REGISTRY), abi: registryAbi, eventName: "LicensePurchased",
