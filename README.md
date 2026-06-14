@@ -173,7 +173,7 @@ No transactional bridge: the two chains are tied only by the shared `songId` (sl
 | What | Address / proof |
 | ---- | --------------- |
 | USDC (Arc system ERC-20, `decimals()=6`) | `0x3600000000000000000000000000000000000000` |
-| `TortoiseRightsRegistry` | [`0xF128B0106f0495dE5407a3E46044fb6b8478F4Ba`](https://testnet.arcscan.app/address/0xF128B0106f0495dE5407a3E46044fb6b8478F4Ba) |
+| `TortoiseRightsRegistry` (verified on ArcScan) | [`0xF128B0106f0495dE5407a3E46044fb6b8478F4Ba`](https://testnet.arcscan.app/address/0xF128B0106f0495dE5407a3E46044fb6b8478F4Ba#code) |
 | opt-in (`registerSong`) | [`0xb1e05804…f0df4`](https://testnet.arcscan.app/tx/0xb1e05804039d4f1d517a11131a3a80afa9364610c18ffcbba076730f7a6f0df4) |
 | license (`purchaseSongLicense`, USDC settlement) | [`0x72f5341e…cf10e4`](https://testnet.arcscan.app/tx/0x72f5341e193f373dfc93e4c9a12482316eccdefe57146f4a950931e285cf10e4) |
 
