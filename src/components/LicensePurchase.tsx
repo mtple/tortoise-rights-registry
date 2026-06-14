@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useAccount, useChainId, useSwitchChain, useWriteContract, usePublicClient } from "wagmi";
-import { base } from "wagmi/chains";
 import { erc20Abi, formatUnits, getAddress, type Address, type Hex } from "viem";
 import { Button, Card, StatusBadge, WalletButton } from "@/components/ui";
 import { tortoiseRightsRegistryAbi, RIGHTS_REGISTRY_ADDRESS, USDC_ADDRESS, songKey } from "@/lib/registry";
+import { REGISTRY_CHAIN_ID } from "@/lib/client";
+import { links } from "@/lib/links";
 
 type Rec = { artist: Address; licenseActive: boolean; priceUsdc: bigint; manifestHash: Hex; licenseTermsHash: Hex };
 type Step = "idle" | "approving" | "purchasing" | "receipt" | "done" | "error";
@@ -52,7 +53,7 @@ export function LicensePurchase({ songId }: { songId: string }) {
     setMsg("");
     setTx(null);
     try {
-      if (chainId !== base.id) await switchChain({ chainId: base.id });
+      if (chainId !== REGISTRY_CHAIN_ID) await switchChain({ chainId: REGISTRY_CHAIN_ID });
 
       // Read price + manifest FRESH right before the tx (C5 + audit F1 maxPrice).
       const fresh = (await client.readContract({
@@ -155,7 +156,7 @@ export function LicensePurchase({ songId }: { songId: string }) {
       {step === "done" && tx && (
         <p className="text-sm">
           <StatusBadge kind="ok">purchased</StatusBadge>{" "}
-          <a className="ml-2 underline" href={`https://basescan.org/tx/${tx}`} target="_blank" rel="noreferrer">
+          <a className="ml-2 underline" href={links.registryTx(tx)} target="_blank" rel="noreferrer">
             view tx
           </a>
         </p>
