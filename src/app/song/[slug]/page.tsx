@@ -8,7 +8,6 @@ import { Button, Card, StatusBadge, WalletButton } from "@/components/ui";
 import { tortoiseRightsRegistryAbi, RIGHTS_REGISTRY_ADDRESS, tortoiseRegistrarAbi, songKey } from "@/lib/registry";
 import { TORTOISE_REGISTRAR_ADDRESS, buildSongTextRecords } from "@/lib/ens";
 import { LicensePurchase } from "@/components/LicensePurchase";
-import { LoadingAnimation } from "@/components/LoadingAnimation";
 import { VerifyLinks } from "@/components/VerifyLinks";
 import { links } from "@/lib/links";
 
@@ -185,8 +184,8 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
     }
   }
 
-  // Full-screen spinner during the multi-step opt-in (sign → store on Walrus → register → name),
-  // where there are long waits (Walrus uploads ~18s) and the user shouldn't think it hung.
+  // True during the multi-step opt-in (sign → store on Walrus → register → name), where there are
+  // long waits (Walrus uploads ~18s). Drives the in-button spinner so the user knows it's working.
   const working = step === "signing" || step === "storing" || step === "registering" || step === "naming";
 
   if (loadErr) {
@@ -202,8 +201,6 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
   }
 
   return (
-    <>
-      {working && <LoadingAnimation message={msg || "Working…"} />}
     <main className="space-y-6">
       <a href="/" className="text-sm underline">← back</a>
 
@@ -264,8 +261,8 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
             ) : (
               <div className="space-y-2">
                 <WalletButton />
-                <Button onClick={optIn} disabled={!song || step === "signing" || step === "storing" || step === "registering" || step === "naming"}>
-                  {step === "idle" || step === "error" || step === "done" ? "Sign consent & register" : "Working…"}
+                <Button onClick={optIn} loading={working} disabled={!song}>
+                  {working ? "Working…" : "Sign consent & register"}
                 </Button>
               </div>
             )}
@@ -316,6 +313,5 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
         consented to this audio hash under the published terms; the wallet↔song link is Tortoise-attested.
       </p>
     </main>
-    </>
   );
 }

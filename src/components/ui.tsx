@@ -3,20 +3,49 @@
 import { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { useAccount, useConnect, useDisconnect, type Connector } from "wagmi";
 
+// Small inline tortoise spinner — the same brand mark as the (former) full-page loader, sized to
+// sit next to a label. Rendered as a CSS mask filled with currentColor so it picks up the host's
+// text colour (cream on ink buttons) and stays visible on any background. Spins via the `spin`
+// keyframe in globals.css.
+export function Spinner({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={"inline-block shrink-0 " + className}
+      style={{
+        backgroundColor: "currentColor",
+        WebkitMaskImage: "url(/transparent-icon.png)",
+        maskImage: "url(/transparent-icon.png)",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        animation: "spin 1.5s linear infinite",
+      }}
+    />
+  );
+}
+
 export function Button({
   children,
   className = "",
+  loading = false,
+  disabled,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode; loading?: boolean }) {
   return (
     <button
       className={
-        "rounded-lg bg-ink px-4 py-2 font-medium text-cream transition disabled:cursor-not-allowed " +
+        "inline-flex items-center justify-center gap-2 rounded-lg bg-ink px-4 py-2 font-medium text-cream transition disabled:cursor-not-allowed " +
         "disabled:opacity-50 hover:opacity-90 " +
         className
       }
+      disabled={disabled || loading}
       {...props}
     >
+      {loading && <Spinner />}
       {children}
     </button>
   );
