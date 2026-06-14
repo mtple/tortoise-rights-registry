@@ -1,16 +1,13 @@
 // TortoiseRightsRegistry — ABI + typed read/write helpers.
 // The contract is authoritative for live state (licenseActive, price). (plan §4, C7)
 
-import { keccak256, toBytes, getAddress, type Address, type Hex, type PublicClient } from "viem";
+import { keccak256, toBytes, getAddress, type Address, type Hex } from "viem";
 import rightsRegistryAbi from "./abi/TortoiseRightsRegistry.json" with { type: "json" };
 import registrarAbi from "./abi/TortoiseRegistrar.json" with { type: "json" };
 import { buildConsentTypedData, type ConsentMessage } from "./eip712";
-import { REGISTRY_CHAIN_ID, ARC_CHAIN_ID } from "./client";
+import { basePublicClient, BASE_CHAIN_ID } from "./client";
 
-// These helpers only use chain-agnostic reads (readContract / verifyTypedData), so accept any public
-// client — the Base OR the Arc one (registryPublicClient returns a union of the two). A structural
-// PublicClient avoids the "two different types with this name" friction between the concrete clients.
-type Client = PublicClient;
+type Client = ReturnType<typeof basePublicClient>;
 
 // ABIs are generated from the Foundry build: `pnpm abi` (see package.json). Keep in sync with contracts/.
 export const tortoiseRightsRegistryAbi = rightsRegistryAbi;
@@ -32,29 +29,15 @@ function envAddress(...candidates: (string | undefined)[]): Address {
 // Browser (client components) can ONLY read NEXT_PUBLIC_* env. This module is imported by both the
 // keyless API routes (server) and the song/purchase pages (client), so we prefer the NEXT_PUBLIC_
 // twin and fall back to the bare name for server/scripts. Vercel must set NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS.
-//
-// Chain-keyed like USDC: on Arc, read ONLY ARC_RIGHTS_REGISTRY_ADDRESS (no Base fallback). Falling
-// back to the Base address on Arc would send Arc-domain signatures + reads/writes to an address with
-// no contract on Arc — confusing failures or no-op txs. With no fallback, a missing Arc address
-// yields "" so the routes' existing "not configured" guard fails loudly + early instead. The Base
-// address in .env stays untouched (only read when REGISTRY_CHAIN_ID is Base).
-export const RIGHTS_REGISTRY_ADDRESS =
-  REGISTRY_CHAIN_ID === ARC_CHAIN_ID
-    ? envAddress(
-        process.env.NEXT_PUBLIC_ARC_RIGHTS_REGISTRY_ADDRESS,
-        process.env.ARC_RIGHTS_REGISTRY_ADDRESS,
-      )
-    : envAddress(process.env.NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS, process.env.RIGHTS_REGISTRY_ADDRESS);
-// USDC used for license payments — on the registry chain (both decimals()=6). Pick the address for
-// the configured chain: on Arc the system USDC ERC-20 interface (0x3600…0000, confirmed on-chain),
-// on Base the canonical USDC. Keying off REGISTRY_CHAIN_ID (not blind env precedence) means a Base
-// deployment never accidentally uses an ARC_USDC_ADDRESS that's just sitting in .env.
-const ARC_USDC_DEFAULT = "0x3600000000000000000000000000000000000000"; // Arc testnet, decimals()=6
-const BASE_USDC_DEFAULT = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // Base mainnet, decimals()=6
-export const USDC_ADDRESS =
-  REGISTRY_CHAIN_ID === ARC_CHAIN_ID
-    ? envAddress(process.env.NEXT_PUBLIC_ARC_USDC_ADDRESS, process.env.ARC_USDC_ADDRESS, ARC_USDC_DEFAULT)
-    : envAddress(process.env.NEXT_PUBLIC_USDC_ADDRESS, process.env.USDC_ADDRESS, BASE_USDC_DEFAULT);
+export const RIGHTS_REGISTRY_ADDRESS = envAddress(
+  process.env.NEXT_PUBLIC_RIGHTS_REGISTRY_ADDRESS,
+  process.env.RIGHTS_REGISTRY_ADDRESS,
+);
+export const USDC_ADDRESS = envAddress(
+  process.env.NEXT_PUBLIC_USDC_ADDRESS,
+  process.env.USDC_ADDRESS,
+  "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // Base mainnet, decimals()=6 (verified)
+);
 
 /// songKey = keccak256(bytes(songId)) — must match the contract's keccak256(bytes(songId)).
 export function songKey(songId: string): Hex {
@@ -117,7 +100,7 @@ export async function verifyConsent(
   message: ConsentMessage,
   signature: Hex,
 ): Promise<boolean> {
-  const td = buildConsentTypedData(REGISTRY_CHAIN_ID, registry, message);
+  const td = buildConsentTypedData(BASE_CHAIN_ID, registry, message);
   return client.verifyTypedData({
     address: message.artist,
     domain: td.domain,

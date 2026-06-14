@@ -5,11 +5,11 @@ import { useAccount, useSignTypedData, useWriteContract, useChainId, useSwitchCh
 import { parseUnits, type Hex } from "viem";
 import { Button, Card, StatusBadge, WalletButton } from "@/components/ui";
 import { tortoiseRightsRegistryAbi, RIGHTS_REGISTRY_ADDRESS, tortoiseRegistrarAbi, songKey } from "@/lib/registry";
-import { REGISTRY_CHAIN_ID, BASE_CHAIN_ID } from "@/lib/client";
+import { BASE_CHAIN_ID } from "@/lib/client";
 import { TORTOISE_REGISTRAR_ADDRESS, buildSongTextRecords } from "@/lib/ens";
 import { LicensePurchase } from "@/components/LicensePurchase";
 import { VerifyLinks } from "@/components/VerifyLinks";
-import { links, REGISTRY_CHAIN_NAME } from "@/lib/links";
+import { links } from "@/lib/links";
 
 type Step = "idle" | "signing" | "storing" | "registering" | "naming" | "done" | "error";
 
@@ -20,9 +20,9 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
   const { switchChain } = useSwitchChain();
   const { signTypedDataAsync } = useSignTypedData();
   const { writeContractAsync } = useWriteContract();
-  // Pinned to the registry chain: the registered-song read AND the registerSong receipt wait both
-  // target the registry chain (Arc when configured), regardless of the wallet's current chain.
-  const client = usePublicClient({ chainId: REGISTRY_CHAIN_ID });
+  // Pinned to Base: the registered-song read AND the registerSong receipt wait both target Base,
+  // regardless of the wallet's current chain.
+  const client = usePublicClient({ chainId: BASE_CHAIN_ID });
 
   const [song, setSong] = useState<any>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -92,7 +92,7 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
     setMsg("");
     setResult(null);
     try {
-      if (chainId !== REGISTRY_CHAIN_ID) await switchChain({ chainId: REGISTRY_CHAIN_ID });
+      if (chainId !== BASE_CHAIN_ID) await switchChain({ chainId: BASE_CHAIN_ID });
 
       // 1) digest (fresh, with the buyer's chosen price + a current timestamp)
       setStep("signing");
@@ -154,19 +154,16 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
       // gated on-chain to the song's registered artist). Non-fatal: consent is already recorded,
       // so a naming failure (e.g. name already minted, or registrar not configured) doesn't undo it.
       //
-      // TWO-CHAIN CASE: the ENS registrar is on Base, but when the registry is on Arc the wallet is
-      // now on Arc — minting in-flow would force an Arc→Base switch mid-flow. So we only mint in-flow
-      // when the registry is ALSO on Base; on Arc, naming is done backend-side via the admin CLI
-      // (scripts/mint-song-name.mjs), keeping the demo flow single-network per action. (plan: two-chain coordination)
+      // The ENS registrar is on Base (same chain as the registry + payment). We mint the song's
+      // name in-flow when the registrar is configured in this build; otherwise naming is done
+      // backend-side via the admin CLI (scripts/mint-song-name.mjs).
       let nameTx: Hex | undefined;
       let nameErr: string | undefined;
       let nameSkip: string | undefined; // why the in-flow mint didn't run (so it's never invisible)
-      const onBase = REGISTRY_CHAIN_ID === BASE_CHAIN_ID;
-      const inflowMint = onBase && !!TORTOISE_REGISTRAR_ADDRESS;
+      const inflowMint = !!TORTOISE_REGISTRAR_ADDRESS;
       if (!inflowMint) {
-        nameSkip = !onBase
-          ? `registry is on ${REGISTRY_CHAIN_NAME}; ENS (Base) is minted by the admin CLI (mint-song-name.mjs)`
-          : "NEXT_PUBLIC_TORTOISE_REGISTRAR_ADDRESS not configured in this build — name not minted in-flow";
+        nameSkip =
+          "NEXT_PUBLIC_TORTOISE_REGISTRAR_ADDRESS not configured in this build — name not minted in-flow";
       }
       if (inflowMint) {
         try {
@@ -253,7 +250,7 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
           // Consent already recorded on-chain — no opt-in form. Point to the verify + purchase
           // panels below.
           <p className="text-sm text-ink/70">
-            Consent for this song is recorded on {REGISTRY_CHAIN_NAME}.{" "}
+            Consent for this song is recorded on Base.{" "}
             {registered.licenseActive
               ? "Buy a license below, or verify the full chain yourself."
               : "The artist has closed new licensing; you can still verify the chain below."}
@@ -294,10 +291,10 @@ export default function SongPage({ params }: { params: Promise<{ slug: string }>
             <StatusBadge kind="ok">registered</StatusBadge>{" "}
             {result.nameTx && <StatusBadge kind="ok">name minted</StatusBadge>}
           </p>
-          <p className="text-sm">Consent recorded on {REGISTRY_CHAIN_NAME}, audio + manifest stored on Walrus. Details below.</p>
+          <p className="text-sm">Consent recorded on Base, audio + manifest stored on Walrus. Details below.</p>
           <ul className="space-y-1 text-xs">
             <li>
-              registerSong tx: <a className="underline" href={links.registryTx(result.txHash)} target="_blank" rel="noreferrer">{result.txHash.slice(0, 18)}…</a>
+              registerSong tx: <a className="underline" href={links.baseTx(result.txHash)} target="_blank" rel="noreferrer">{result.txHash.slice(0, 18)}…</a>
             </li>
             {result.nameTx && (
               <li>
